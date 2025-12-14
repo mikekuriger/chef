@@ -1,0 +1,135 @@
+// screens/dream_gallery_screen.dart
+import 'package:flutter/material.dart';
+import 'package:chef/models/dream.dart';
+import 'package:chef/services/api_service.dart';
+import 'package:chef/screens/image_viewer_screen.dart';
+import 'package:chef/constants.dart';
+import 'package:chef/widgets/dream_image.dart';
+import 'package:chef/services/image_store.dart';
+
+
+
+class RecipeGalleryScreen extends StatefulWidget {
+  final ValueNotifier<int> refreshTrigger;
+  const RecipeGalleryScreen({super.key, required this.refreshTrigger});
+
+  @override
+  State<RecipeGalleryScreen> createState() => _RecipeGalleryScreenState();
+}
+
+class _RecipeGalleryScreenState extends State<RecipeGalleryScreen> {
+  List<Recipe> _recipes = [];            // all recipes
+  bool _loading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+
+    // Initial load
+    _loadRecipes();
+
+    // Refresh every time index changes
+    widget.refreshTrigger.addListener(() {
+      _loadRecipes(); 
+    });
+
+    // Listen for changes to recipe data
+    recipeDataChanged.addListener(_handleRecipeDataChanged);
+  }
+
+  void _handleRecipeDataChanged() {
+    if (recipeDataChanged.value) {
+      _loadRecipes(); // 👈 Refresh gallery
+      recipeDataChanged.value = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    recipeDataChanged.removeListener(_handleRecipeDataChanged);
+    widget.refreshTrigger.removeListener(_loadRecipes);  // if you used addListener inline above
+    super.dispose();
+  }
+  
+  Future<void> _loadRecipes() async {
+    setState(() {
+      _loading = true;
+    });
+
+    final recipes = await ApiService.fetchGallery();
+
+    setState(() {
+      _recipes = recipes;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: GridView.builder(
+        itemCount: _recipes.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
+          childAspectRatio: 1,
+        ),
+        itemBuilder: (context, index) {
+          final recipe = _recipes[index];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ImageViewerScreen(
+                          recipes: _recipes,
+                          initialIndex: index,
+                        ),
+                      ),
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                      child: RecipeImage(
+                        recipeId: recipe.id,
+                        url: recipe.imageFile ?? '',
+                        kind: RecipeImageKind.file,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: Container(
+                          color: Colors.grey[300],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        error: Container(
+                          color: Colors.grey[300],
+                          child: const Center(child: Icon(Icons.broken_image, size: 40)),
+                        ),
+                      ),
+                    // child: Image.network(
+                    //   recipe.imageFile ?? '',
+                    //   width: double.infinity,
+                    //   fit: BoxFit.cover,
+                    //   errorBuilder: (context, error, stackTrace) =>
+                    //       const Center(child: Icon(Icons.broken_image, size: 40)),
+                    // ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
