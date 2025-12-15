@@ -56,3 +56,5 @@ google_client_ID-release
 pass.py
 web/
 windows/
+# credential
+assets/gcloud-key.json
