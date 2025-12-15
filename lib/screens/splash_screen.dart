@@ -2,13 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:chef/services/api_service.dart';
-// import 'package:chef/widgets/main_scaffold.dart';
-import 'package:chef/screens/welcome_screen.dart';
+import 'package:chef/widgets/main_scaffold.dart';
+// import 'package:chef/screens/welcome_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:chef/constants.dart';
 import 'package:provider/provider.dart';
-import 'package:chef/state/subscription_model.dart';
-import 'package:chef/services/notification_service.dart';
+// import 'package:chef/state/subscription_model.dart.NO';
 
 
 class SplashScreen extends StatefulWidget {
@@ -54,10 +53,16 @@ class _SplashScreenState extends State<SplashScreen> {
                 await _storage.write(key: 'google_token', value: idToken);
                 
                 // Initialize subscription state before navigating
-                await _initializeSubscription();
+                // await _initializeSubscription();
                 
                 if (!mounted) return;
-                await navigateToPostLoginDestination(context);
+                // await navigateToPostLoginDestination(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MainScaffold(initialIndex: 0),
+                  ),
+                );
                 return;
               }
             }
@@ -75,13 +80,16 @@ class _SplashScreenState extends State<SplashScreen> {
           await ApiService.login(email, password);
           
           // Initialize subscription state before navigating
-          await _initializeSubscription();
+          // await _initializeSubscription();
 
-          // schedule notifications on successful login
-          await _rescheduleNotifications();
-          
           if (!mounted) return;
-          await navigateToPostLoginDestination(context);
+          // await navigateToPostLoginDestination(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MainScaffold(initialIndex: 0),
+            ),
+          );
           return;
         } catch (e) {
           // Login failed, fall through to login screen
@@ -102,51 +110,19 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   // Initialize subscription state
-  Future<void> _initializeSubscription() async {
-    try {
-      // Get the subscription model from the provider
-      final subscriptionModel = Provider.of<SubscriptionModel>(context, listen: false);
+  // Future<void> _initializeSubscription() async {
+  //   try {
+  //     // Get the subscription model from the provider
+  //     final subscriptionModel = Provider.of<SubscriptionModel>(context, listen: false);
       
-      // Initialize and refresh subscription data
-      await subscriptionModel.refresh();
-    } catch (e) {
-      debugPrint('❌ Failed to initialize subscription: $e');
-      // Continue anyway - subscription will be initialized later
-    }
-  }
+  //     // Initialize and refresh subscription data
+  //     await subscriptionModel.refresh();
+  //   } catch (e) {
+  //     debugPrint('❌ Failed to initialize subscription: $e');
+  //     // Continue anyway - subscription will be initialized later
+  //   }
+  // }
 
-  // Reschedule notifications on login
-  Future<void> _rescheduleNotifications() async {
-    try {
-      // Try to personalize with profile first name
-      final profile = await ApiService.getProfile(); // should return a Map
-      final String? first = (() {
-        final v = profile['first_name']?.toString().trim();
-        return (v != null && v.isNotEmpty) ? v : null;
-      })();
-
-      // If you have usage stats, plug them here. Otherwise safe fallbacks:
-      final int? streakDays = null;
-      final DateTime? lastLogUtc = DateTime.now().toUtc();
-
-      await NotificationService().rescheduleAllOnLogin(
-        displayName: first,
-        streakDays: streakDays,
-        lastLogUtc: lastLogUtc,
-        dailyTime: const TimeOfDay(hour: 8, minute: 0),
-        weeklyWeekday: DateTime.sunday,
-      );
-    } catch (e) {
-      // Fallback schedule if profile fetch fails
-      await NotificationService().rescheduleAllOnLogin(
-        displayName: null,
-        streakDays: null,
-        lastLogUtc: DateTime.now().toUtc(),
-        dailyTime: const TimeOfDay(hour: 8, minute: 0),
-        weeklyWeekday: DateTime.sunday,
-      );
-    }
-  }
   
   @override
   Widget build(BuildContext context) {

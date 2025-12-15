@@ -1,8 +1,8 @@
 // services/api_service.dart
 // import 'dart:convert';
-import 'package:chef/models/dream.dart';
+import 'package:chef/models/recipe.dart';
 // import 'package:chef/models/life_event.dart';
-import 'package:chef/models/subscription.dart';
+// import 'package:chef/models/subscription.dart.NO';
 import 'dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:chef/constants.dart';
@@ -94,18 +94,18 @@ class ApiService {
   }
 
   // Login or Register using email + password (soft-verify model)
-  static Future<Map<String, dynamic>> loginOrRegister(String email, String password) async {
-    final res = await DioClient.dio.post('/api/login_or_register',
-      data: {'email': email, 'password': password},
-      options: Options(validateStatus: (_) => true),
-    );
-    if (res.statusCode != 200) {
-      throw Exception(res.data is Map && res.data['error'] != null
-          ? res.data['error']
-          : 'Email sign-in failed');
-    }
-    return Map<String, dynamic>.from(res.data['user'] ?? {});
-  }
+  // static Future<Map<String, dynamic>> loginOrRegister(String email, String password) async {
+  //   final res = await DioClient.dio.post('/api/login_or_register',
+  //     data: {'email': email, 'password': password},
+  //     options: Options(validateStatus: (_) => true),
+  //   );
+  //   if (res.statusCode != 200) {
+  //     throw Exception(res.data is Map && res.data['error'] != null
+  //         ? res.data['error']
+  //         : 'Email sign-in failed');
+  //   }
+  //   return Map<String, dynamic>.from(res.data['user'] ?? {});
+  // }
 
   // Start a guest session
   static Future<void> startGuestSession() async {
@@ -162,64 +162,64 @@ class ApiService {
   }
 
   // Get user's subscription status
-  static Future<SubscriptionStatus> getSubscriptionStatus() async {
-    try {
-      final res = await DioClient.dio.get('/api/subscription/status',
-        // options: Options(validateStatus: (status) => status == 200),
-      );
-      debugPrint('SUB API status=${res.statusCode} url=${res.realUri}');
-      debugPrint('SUB API headers auth=${res.requestOptions.headers['Authorization']}');
-      debugPrint('SUB API body=${res.data}');
+  // static Future<SubscriptionStatus> getSubscriptionStatus() async {
+  //   try {
+  //     final res = await DioClient.dio.get('/api/subscription/status',
+  //       // options: Options(validateStatus: (status) => status == 200),
+  //     );
+  //     debugPrint('SUB API status=${res.statusCode} url=${res.realUri}');
+  //     debugPrint('SUB API headers auth=${res.requestOptions.headers['Authorization']}');
+  //     debugPrint('SUB API body=${res.data}');
 
-      final Map<String, dynamic> body =
-        res.data is Map<String, dynamic> ? res.data as Map<String, dynamic> : {};
+  //     final Map<String, dynamic> body =
+  //       res.data is Map<String, dynamic> ? res.data as Map<String, dynamic> : {};
 
-      // return SubscriptionStatus.fromJson(res.data);
-      debugPrint('SUB=$body');
+  //     // return SubscriptionStatus.fromJson(res.data);
+  //     debugPrint('SUB=$body');
 
-      return SubscriptionStatus.fromJson(body);
-    } catch (e) {
-      // If there's an error, return a default free tier status
-      return SubscriptionStatus.free();
-    }
-  }
+  //     return SubscriptionStatus.fromJson(body);
+  //   } catch (e) {
+  //     // If there's an error, return a default free tier status
+  //     return SubscriptionStatus.free();
+  //   }
+  // }
 
-  // Get available subscription plans
-  static Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
-    try {
-      logd('Fetching subscription plans from API...');
-      final res = await DioClient.dio.get('/api/subscription/plans',
-        options: Options(validateStatus: (status) => status == 200),
-      );
-      logd('API response status: ${res.statusCode}');
-      logd('API response data: ${res.data}');
+  // // Get available subscription plans
+  // static Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
+  //   try {
+  //     logd('Fetching subscription plans from API...');
+  //     final res = await DioClient.dio.get('/api/subscription/plans',
+  //       options: Options(validateStatus: (status) => status == 200),
+  //     );
+  //     logd('API response status: ${res.statusCode}');
+  //     logd('API response data: ${res.data}');
       
-      if (res.data is! List) {
-        logd('ERROR: API response is not a list. Type: ${res.data.runtimeType}');
-        return [];
-      }
+  //     if (res.data is! List) {
+  //       logd('ERROR: API response is not a list. Type: ${res.data.runtimeType}');
+  //       return [];
+  //     }
       
-      final List<dynamic> plansJson = res.data;
-      logd('Number of plans in response: ${plansJson.length}');
+  //     final List<dynamic> plansJson = res.data;
+  //     logd('Number of plans in response: ${plansJson.length}');
       
-      if (plansJson.isNotEmpty) {
-        logd('First plan data: ${plansJson.first}');
-      }
+  //     if (plansJson.isNotEmpty) {
+  //       logd('First plan data: ${plansJson.first}');
+  //     }
       
-      try {
-        final plans = plansJson.map((json) => SubscriptionPlan.fromJson(json)).toList();
-        logd('Successfully parsed ${plans.length} plans');
-        return plans;
-      } catch (parseError) {
-        logd('Error parsing subscription plans: $parseError');
-        return [];
-      }
-    } catch (e) {
-      logd('Error fetching subscription plans: $e');
-      // Return empty list if there's an error
-      return [];
-    }
-  }
+  //     try {
+  //       final plans = plansJson.map((json) => SubscriptionPlan.fromJson(json)).toList();
+  //       logd('Successfully parsed ${plans.length} plans');
+  //       return plans;
+  //     } catch (parseError) {
+  //       logd('Error parsing subscription plans: $parseError');
+  //       return [];
+  //     }
+  //   } catch (e) {
+  //     logd('Error fetching subscription plans: $e');
+  //     // Return empty list if there's an error
+  //     return [];
+  //   }
+  // }
 
   // Initiate a subscription purchase
   // For app store / play store, we also send provider + receipt to the backend.

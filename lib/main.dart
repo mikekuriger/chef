@@ -6,25 +6,25 @@ import 'package:chef/screens/splash_screen.dart';
 import 'package:chef/screens/login_screen.dart';
 import 'package:chef/screens/register_screen.dart';
 import 'package:chef/screens/dashboard_screen.dart';
-import 'package:chef/screens/dream_journal_screen.dart';
-import 'package:chef/screens/dream_journal_editor_screen.dart';
+import 'package:chef/screens/recipe_journal_screen.dart';
+import 'package:chef/screens/recipe_journal_editor_screen.dart';
 // import 'package:chef/screens/dream_gallery_screen.dart';
 import 'package:chef/screens/forgot_password_screen.dart';
 import 'package:chef/screens/profile_screen.dart';
-import 'package:chef/screens/subscription_screen.dart';
+// import 'package:chef/screens/subscription_screen.dart.NO';
 
 import 'package:chef/services/dio_client.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/constants.dart';
 
-import 'package:chef/repository/dream_repository.dart';
-import 'package:chef/state/dream_list_model.dart';
-import 'package:chef/state/subscription_model.dart';
-import 'package:chef/services/notification_service.dart';
+import 'package:chef/repository/recipe_repository.dart';
+import 'package:chef/state/recipe_list_model.dart';
+// import 'package:chef/state/subscription_model.dart.NO';
+// import 'package:chef/services/notification_service.dart.NO';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService().init();
+  // await NotificationService().init();
   await DioClient.init();
 
   runApp(
@@ -35,9 +35,9 @@ void main() async {
           // includeHidden: true if you want hidden entries in the list model
           create: (ctx) => RecipeListModel(repo: ctx.read<RecipeRepository>())..init(),
         ),
-        ChangeNotifierProvider<SubscriptionModel>(
-          create: (_) => SubscriptionModel()..init(),
-        ),
+        // ChangeNotifierProvider<SubscriptionModel>(
+          // create: (_) => SubscriptionModel()..init(),
+        // ),
       ],
       child: const ReciperApp(),
     ),
@@ -66,7 +66,7 @@ class ReciperApp extends StatelessWidget {
         '/image': (context) => const Placeholder(),
         '/profile': (context) => ProfileScreen(refreshTrigger: profileRefreshTrigger),
         '/forgot-password': (_) => const ForgotPasswordScreen(),
-        '/subscription': (context) => const SubscriptionScreen(),
+        // '/subscription': (context) => const SubscriptionScreen(),
       },
     );
   }

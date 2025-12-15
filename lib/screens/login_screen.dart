@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-// import 'package:chef/widgets/main_scaffold.dart';
-import 'package:chef/screens/welcome_screen.dart';
+import 'package:chef/widgets/main_scaffold.dart';
+// import 'package:chef/screens/welcome_screen.dart';
 import 'package:chef/services/api_service.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/constants.dart';
@@ -74,7 +74,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       // Navigate to post-login destination (welcome tour or main scaffold)
-      await navigateToPostLoginDestination(context);
+      // await navigateToPostLoginDestination(context);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScaffold(initialIndex: 0),
+        ),
+      );
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       setState(() => _error = msg);
@@ -88,23 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // // ===== Open Privacy Policy =====
-  // Future<void> _openPrivacyPolicy() async {
-  //   const url = 'https://dreamr-us-west-01.zentha.me/static/privacy.html';
-  //   final uri = Uri.parse(url);
-
-  //   if (await canLaunchUrl(uri)) {
-  //     await launchUrl(uri, mode: LaunchMode.externalApplication);
-  //   } else {
-  //     if (!mounted) return;
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(
-  //         content: Text('Unable to open Privacy Policy'),
-  //         behavior: SnackBarBehavior.floating,
-  //       ),
-  //     );
-  //   }
-  // }
 
   // ===== Google login =====
   Future<void> _handleGoogleLogin() async {
@@ -145,7 +134,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       // Navigate to post-login destination (welcome tour or main scaffold)
-      await navigateToPostLoginDestination(context);
+      // await navigateToPostLoginDestination(context);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScaffold(initialIndex: 0),
+        ),
+      );
     } catch (e) {
       // Handle sign-in errors
       final msg = e.toString().replaceFirst('Exception: ', '');
@@ -211,7 +206,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
       // Navigate to post-login destination (welcome tour or main scaffold)
-      await navigateToPostLoginDestination(context);
+      // await navigateToPostLoginDestination(context);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const MainScaffold(initialIndex: 0),
+        ),
+      );
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       setState(() => _error = msg);
@@ -250,12 +251,12 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              "Welcome to Dreamr ✨",
+              "Welcome to AI Chef",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             SizedBox(height: 2),
             Text(
-              "Your Personal AI-powered Chef",
+              "Your Personal AI-powered Recipe Assistant",
               style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFFD1B2FF)),
             ),
           ],

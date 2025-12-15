@@ -1,6 +1,6 @@
 // widgets/dream_journal_widget.dart
 import 'dart:io';
-import 'package:chef/models/dream.dart';
+import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
 import 'package:chef/services/dio_client.dart';
 import 'package:chef/services/image_store.dart';

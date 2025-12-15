@@ -59,8 +59,8 @@ class NotificationMessages {
       body: 'Capture one image or feeling from last night.',
     ),
     NotificationLine(
-      title: 'Morning dream check-in',
-      body: 'Open Dreamr and add today\'s entry.',
+      title: 'Morning recipe inspiration',
+      body: 'Open Chef and add today\'s recipe.',
     ),
     NotificationLine(
       title: 'Your story continues',
@@ -83,8 +83,8 @@ class NotificationMessages {
       body: 'Spend 30 seconds writing last night\'s story.',
     ),
     NotificationLine(
-      title: 'Dreamr reminder',
-      body: 'Add today\'s dream before the day takes over.',
+      title: 'Chef reminder',
+      body: 'Add today\'s recipe before the day takes over.',
     ),
     NotificationLine(
       title: 'Did you dream, \$name?',
@@ -95,8 +95,8 @@ class NotificationMessages {
       body: 'Add one more dream to your journal today.',
     ),
     NotificationLine(
-      title: 'Dream journal moment',
-      body: 'Open Dreamr and write what still lingers.',
+      title: 'Recipe journal moment',
+      body: 'Open Chef and write what still lingers.',
     ),
     NotificationLine(
       title: 'Morning reflection',
@@ -107,8 +107,8 @@ class NotificationMessages {
       body: 'Write a quick note before this dream disappears.',
     ),
     NotificationLine(
-      title: 'Dreamr daily nudge',
-      body: 'Capture your dream in a few short lines.',
+      title: 'Chef daily nudge',
+      body: 'Capture your recipe idea in a few short lines.',
     ),
     NotificationLine(
       title: 'Your inner story',
@@ -139,7 +139,7 @@ class NotificationMessages {
       body: 'Write your dream before your coffee cools.',
     ),
     NotificationLine(
-      title: 'Dreamr is ready',
+      title: 'Chef is ready',
       body: 'Open the app and add last night\'s chapter.',
     ),
     NotificationLine(
@@ -184,7 +184,7 @@ class NotificationMessages {
     ),
     NotificationLine(
       title: 'Quick journal check',
-      body: 'Open Dreamr and add one more dream today.',
+      body: 'Open Chef and add one more dream today.',
     ),
     NotificationLine(
       title: 'Don\'t skip today',
@@ -207,7 +207,7 @@ class NotificationMessages {
       body: 'Bring last night\'s story into your journal.',
     ),
     NotificationLine(
-      title: 'Soft nudge from Dreamr',
+      title: 'Soft nudge from Chef',
       body: 'Take a quiet moment to write your dream.',
     ),
     NotificationLine(
@@ -273,8 +273,8 @@ class NotificationMessages {
     final n = generic.length;
     if (n == 0) {
       return const NotificationLine(
-        title: 'Dreamr reminder',
-        body: 'Open Dreamr and write last night\'s dream.',
+        title: 'Chef reminder',
+        body: 'Open Chef and write last night\'s dream.',
       );
     }
     final base = indexForMonthDay(localNow);

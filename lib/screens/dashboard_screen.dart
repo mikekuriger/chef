@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';  // Added for rootBundle
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+// import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chef/services/api_service.dart';
-import 'package:chef/constants.dart';
+// import 'package:chef/constants.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/services/image_store.dart';
 import 'package:chef/services/dio_client.dart';
@@ -17,7 +17,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:mime/mime.dart';
+// import 'package:mime/mime.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:math' as math;
@@ -185,7 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     _loadUserName();
     _loadDraftText();
     _initSpeechApi();
-    _loadQuota();
+    // _loadQuota();
 
 
     _micAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
@@ -209,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Refresh quota data when screen becomes visible again
-    _loadQuota();
+    // _loadQuota();
     debugPrint('DashboardScreen: refreshing subscription data in didChangeDependencies');
   }
 
@@ -226,18 +226,18 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // Load user's subscription quota
-  Future<void> _loadQuota() async {
-  try {
-    final status = await ApiService.getSubscriptionStatus();
-    if (!mounted) return;
-    setState(() {
-      _isPro = status.isActive;
-      _textRemainingWeek = status.textRemainingWeek;
-    });
-  } catch (_) {
-    // optional: ignore or snackbar
-  }
-}
+//   Future<void> _loadQuota() async {
+//   try {
+//     final status = await ApiService.getSubscriptionStatus();
+//     if (!mounted) return;
+//     setState(() {
+//       _isPro = status.isActive;
+//       _textRemainingWeek = status.textRemainingWeek;
+//     });
+//   } catch (_) {
+//     // optional: ignore or snackbar
+//   }
+// }
   
   // Initialize speech recognition with Google Cloud Speech API
   Future<void> _initSpeechApi() async {
@@ -415,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('draft_text');
-      _loadQuota(); // refresh quota after submission
+      // _loadQuota(); // refresh quota after submission
       _controller.clear();
 
       // Do not navigate, stay on dashboard to show the recipe

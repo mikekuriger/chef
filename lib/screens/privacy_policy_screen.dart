@@ -91,7 +91,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Privacy Policy – Dreamr',
+              'Privacy Policy – AI Chef',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20,
@@ -110,11 +110,12 @@ class PrivacyPolicyScreen extends StatelessWidget {
             _sectionTitle('1. Information We Collect'),
             _paragraph(
               'We collect the minimum information needed to create and operate your '
-              'Dreamr account and provide dream analysis features.',
+              'AI Chef account and provide recipe generation features.',
             ),
 
             _subTitle('Account Information'),
             _bullet('First name'),
+            _bullet('Last name'),
             _bullet('Email address'),
             _bullet('Login credentials (password stored as a secure hash)'),
             _bullet(
@@ -122,27 +123,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'account ID and email, if you choose to sign in with those services)',
             ),
             _bullet('Device timezone (automatically provided by your device)'),
-            _bullet(
-              'Optional profile details you choose to provide, such as birthdate and gender',
-            ),
+            // _bullet(
+            //   'Optional profile details you choose to provide, such as birthdate and gender',
+            // ),
 
-            _subTitle('Dream Content'),
-            _bullet('Dreams you submit (text)'),
+            _subTitle('Recipe Content'),
+            _bullet('Recipes you submit (text)'),
             _bullet(
-              'AI-generated interpretations, summaries, and other responses based on your dreams',
-            ),
-            _bullet(
-              'Optional dream images generated for you and associated metadata '
-              '(e.g., file name, style, timestamps)',
-            ),
-
-            _subTitle('Subscription and Purchase Data'),
-            _bullet('Subscription plan (e.g., Pro monthly or yearly)'),
-            _bullet('App Store / Google Play purchase tokens or receipts'),
-            _bullet('Basic billing status information (e.g., active, canceled, expired)'),
-            _paragraph(
-              'Dreamr does not receive or store your full payment card details. '
-              'All payment processing is handled by Apple (App Store) or Google (Play Store).',
+              'AI-generated recipes',
             ),
 
             _subTitle('Technical and Usage Information'),
@@ -159,28 +147,22 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _sectionTitle('2. Location Data'),
             _paragraph(
-              'Dreamr does not access or collect GPS or precise location data.',
+              'AI Chef does not access or collect GPS or precise location data.',
             ),
 
             _sectionTitle('3. How We Use Your Information'),
             _paragraph('We use the information we collect to:'),
             _bullet('Create and maintain your account'),
-            _bullet('Store and display your dream journal, AI analyses, and associated images'),
-            _bullet('Provide optional image generation features based on your dreams'),
+            _bullet('Store and display your recipe journal entries'),
             _bullet('Manage subscriptions and verify purchases through Apple and Google'),
-            _bullet('Adjust timestamps and notifications to your timezone'),
-            _bullet(
-              'Send account-related emails (such as verification, password reset, '
-              'and important service updates)',
-            ),
             _bullet('Maintain and improve app performance, security, and reliability'),
             _paragraph('We do not use your data for targeted advertising.'),
 
             _sectionTitle('4. Third-Party Services'),
-            _paragraph('Dreamr may interact with the following third-party services:'),
+            _paragraph('AI Chef may interact with the following third-party services:'),
             _bullet(
-              'OpenAI and other AI providers – Used to analyze dreams and generate text '
-              'and image responses based on the content you submit. Your dream text or prompts '
+              'OpenAI and other AI providers – Used to analyze recipes and generate text '
+              'responses based on the content you submit. Your recipe text or prompts '
               'derived from it are sent to these providers so they can generate responses.',
             ),
             _bullet(
@@ -198,13 +180,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'governed by their respective privacy policies.',
             ),
             _paragraph(
-              'Dreamr contains no third-party advertising SDKs and does not use analytics tools that '
+              'AI Chef contains no third-party advertising SDKs and does not use analytics tools that '
               'track your activity across other apps or websites.',
             ),
 
             _sectionTitle('5. Local Storage and Offline Use'),
             _paragraph(
-              'Dream data (including AI responses and images) may be cached locally on your device '
+              'Recipe data (including AI responses) may be cached locally on your device '
               'to support better performance and offline access.',
             ),
             _paragraph(
@@ -215,10 +197,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _sectionTitle('6. Data Retention and Deletion'),
             _paragraph(
-              'Your dreams, AI responses, and account data are stored on our servers until you '
+              'Your recipes, AI responses, and account data are stored on our servers until you '
               'delete them or delete your account.',
             ),
-            _bullet('You may delete individual dreams from within the app (where supported).'),
+            _bullet('You may delete individual recipes from within the app (where supported).'),
             _bullet(
               'You may request full account and data deletion at any time by contacting us at '
               'the email address below.',
@@ -240,7 +222,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
             _sectionTitle('8. Children’s Privacy'),
             _paragraph(
-              'Dreamr is not intended for children under the age of 13. We do not knowingly collect '
+              'AI Chef is not intended for children under the age of 13. We do not knowingly collect '
               'personal information from children under 13.',
             ),
             _paragraph(
@@ -254,7 +236,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               'we will notify you in the app or via the app store listing.',
             ),
             _paragraph(
-              'Your continued use of Dreamr after an update means you accept the revised policy.',
+              'Your continued use of AI Chef after an update means you accept the revised policy.',
             ),
 
             _sectionTitle('10. Contact Information'),

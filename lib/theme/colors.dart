@@ -48,26 +48,26 @@ class AppColors {
   // static const background = Color.fromARGB(255, 4, 28, 16);
 
   // ORANGE set
-  static const purple200 = Color(0xFFFFEDD5);
-  static const purple400 = Color(0xFFFB923C);
-  static const purple600 = Color(0xFFEA580C);
-  static const purple700 = Color(0xFFC2410C);
-  static const purple800 = Color.fromARGB(255, 154, 52, 18);
-  static const purple850 = Color.fromARGB(255, 124, 41, 14);
-  static const purple900 = Color.fromARGB(255, 92, 30, 10);
-  static const purple950 = Color.fromARGB(255, 60, 18, 6);
-  static const background = Color.fromARGB(255, 44, 12, 4);
+  // static const purple200 = Color(0xFFFFEDD5);
+  // static const purple400 = Color(0xFFFB923C);
+  // static const purple600 = Color(0xFFEA580C);
+  // static const purple700 = Color(0xFFC2410C);
+  // static const purple800 = Color.fromARGB(255, 154, 52, 18);
+  // static const purple850 = Color.fromARGB(255, 124, 41, 14);
+  // static const purple900 = Color.fromARGB(255, 92, 30, 10);
+  // static const purple950 = Color.fromARGB(255, 60, 18, 6);
+  // static const background = Color.fromARGB(255, 44, 12, 4);
 
   // RED set
-  // static const purple200 = Color(0xFFFFE4E6);
-  // static const purple400 = Color(0xFFFB7185);
-  // static const purple600 = Color(0xFFE11D48);
-  // static const purple700 = Color(0xFFBE123C);
-  // static const purple800 = Color.fromARGB(255, 159, 18, 57);
-  // static const purple850 = Color.fromARGB(255, 122, 13, 43);
-  // static const purple900 = Color.fromARGB(255, 88, 9, 30);
-  // static const purple950 = Color.fromARGB(255, 54, 5, 18);
-  // static const background = Color.fromARGB(255, 38, 3, 12);
+  static const purple200 = Color(0xFFFFE4E6);
+  static const purple400 = Color(0xFFFB7185);
+  static const purple600 = Color(0xFFE11D48);
+  static const purple700 = Color(0xFFBE123C);
+  static const purple800 = Color.fromARGB(255, 159, 18, 57);
+  static const purple850 = Color.fromARGB(255, 122, 13, 43);
+  static const purple900 = Color.fromARGB(255, 88, 9, 30);
+  static const purple950 = Color.fromARGB(255, 54, 5, 18);
+  static const background = Color.fromARGB(255, 38, 3, 12);
 
 
   static const headerSubtitle = purple400; 

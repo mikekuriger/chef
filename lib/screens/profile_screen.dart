@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/services/api_service.dart';
-import 'package:chef/state/subscription_model.dart';
+// import 'package:chef/state/subscription_model.dart.NO';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chef/screens/login_screen.dart';
@@ -45,9 +45,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
     
     // Refresh subscription data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SubscriptionModel>(context, listen: false).refresh();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   Provider.of<SubscriptionModel>(context, listen: false).refresh();
+    // });
   }
   
   @override
@@ -340,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return AlertDialog(
           title: const Text('Delete Account?'),
           content: const Text(
-            'This will permanently delete your Dreamr account and all associated dreams. '
+            'This will permanently delete your AI Chef account and all associated data. '
             'This action cannot be undone.',
           ),
           actions: [
@@ -541,30 +541,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Consumer<SubscriptionModel>(
-                  builder: (context, subscriptionModel, _) {
-                    final tier = subscriptionModel.status.tier;
-                    final isFree = tier == 'free';
-                    return Row(
-                      children: [
-                        Icon(
-                          isFree ? Icons.star_border : Icons.star,
-                          color: isFree ? Colors.grey : Colors.amber,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Subscription: ${tier.toUpperCase()}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-                ),
+                // Consumer<SubscriptionModel>(
+                //   builder: (context, subscriptionModel, _) {
+                //     final tier = subscriptionModel.status.tier;
+                //     final isFree = tier == 'free';
+                //     return Row(
+                //       children: [
+                //         Icon(
+                //           isFree ? Icons.star_border : Icons.star,
+                //           color: isFree ? Colors.grey : Colors.amber,
+                //           size: 24,
+                //         ),
+                //         const SizedBox(width: 8),
+                //         Text(
+                //           'Subscription: ${tier.toUpperCase()}',
+                //           style: const TextStyle(
+                //             color: Colors.white,
+                //             fontSize: 16,
+                //             fontWeight: FontWeight.bold,
+                //           ),
+                //         ),
+                //       ],
+                //     );
+                //   }
+                // ),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
