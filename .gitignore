@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+.metadata
+NO/
+README.md
+b
+b.ios
+b.release
+devtools_options.yaml
+google_client_ID
+google_client_ID-release
+pass.py
+web/
+windows/
