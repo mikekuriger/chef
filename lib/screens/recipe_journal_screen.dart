@@ -39,14 +39,14 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
   bool? _isPro; // null = loading
   
   // Calendar state
-  DateTime _focusedDay = DateTime.now();
+  final DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final CalendarFormat _calendarFormat = CalendarFormat.month;
-  bool _showCalendar = false; // Collapsed by default
+  // bool _showCalendar = false; // Collapsed by default
   Map<DateTime, List<Recipe>> _recipesByDate = {};
   
   // Category filtering state
-  Set<String> _selectedCategories = {};
+  final Set<String> _selectedCategories = {};
   
   // Visibility preferences
   bool _showStatsSection = true; // Controls if stats section is shown at all
@@ -113,7 +113,7 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
       final categoryMap = <String, int>{};
 
       for (final r in recipes) {
-        final raw = (r.categories ?? '').trim();
+        final raw = (r.categories).trim();
         if (raw.isEmpty) continue;
 
         // Split comma-separated list into individual categories
@@ -234,7 +234,7 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     // Then filter by selected categories if any are selected
     if (_selectedCategories.isNotEmpty) {
       dateFiltered = dateFiltered.where((recipe) {
-        final recipeCategories = (recipe.categories ?? '').trim()
+        final recipeCategories = (recipe.categories).trim()
             .split(',')
             .map((s) => s.trim().toLowerCase())
             .where((s) => s.isNotEmpty)
@@ -262,42 +262,43 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     return _recipesByDate[normalizedDay]?.length ?? 0;
   }
   
-  // Generate a consistent color for each mood
-  Color _getMoodColor(String mood) {
-    // App's predefined moods with their colors
+  // Generate a consistent color for each category
+  Color _getCategoryColor(String category) {
+    // App's predefined categorys with their colors
     // Using text colors for dark backgrounds to ensure visibility
-    final Map<String, Color> predefinedMoods = {
-      'peaceful / gentle': Colors.blue.shade100,
-      'epic / heroic': Colors.orange.shade100,
-      'whimsical / surreal': Colors.purple.shade100,
-      'nightmarish / dark': Colors.orange.shade200,
-      'romantic / nostalgic': Colors.pink.shade100,
-      'ancient / mythic': Colors.brown.shade100,
-      'futuristic / uncanny': Colors.teal.shade100,
-      'elegant / ornate': Colors.indigo.shade100,
+    final Map<String, Color> predefinedCategorys = {
+      'spicy': Colors.red.shade200,
+      'vegetarian': Colors.green.shade200,
+      'vegan': Colors.green.shade300,
+      'dessert': Colors.pink.shade200,
+      'breakfast': Colors.orange.shade200,
+      'dinner': Colors.indigo.shade200,
+      'lunch': Colors.blue.shade200,
+      'soup': Colors.brown.shade200,
+      'salad': Colors.lightGreen.shade200,
     };
     
-    // Normalize the mood string for comparison
-    final normalizedMood = mood.toLowerCase().trim();
+    // Normalize the category string for comparison
+    final normalizedCategory = category.toLowerCase().trim();
     
     // Check for exact matches first
-    if (predefinedMoods.containsKey(normalizedMood)) {
-      return predefinedMoods[normalizedMood]!;
+    if (predefinedCategorys.containsKey(normalizedCategory)) {
+      return predefinedCategorys[normalizedCategory]!;
     }
     
-    // Check for partial matches (e.g., if mood contains "peaceful" or "gentle")
-    for (final entry in predefinedMoods.entries) {
+    // Check for partial matches (e.g., if category contains "peaceful" or "gentle")
+    for (final entry in predefinedCategorys.entries) {
       final keywords = entry.key.split('/').map((k) => k.trim().toLowerCase());
-      if (keywords.any((keyword) => normalizedMood.contains(keyword))) {
+      if (keywords.any((keyword) => normalizedCategory.contains(keyword))) {
         return entry.value;
       }
     }
     
-    // Otherwise generate a color based on the mood string
-    // Use a simple hash function to ensure the same mood always gets the same color
+    // Otherwise generate a color based on the category string
+    // Use a simple hash function to ensure the same category always gets the same color
     int hash = 0;
-    for (int i = 0; i < mood.length; i++) {
-      hash = mood.codeUnitAt(i) + ((hash << 5) - hash);
+    for (int i = 0; i < category.length; i++) {
+      hash = category.codeUnitAt(i) + ((hash << 5) - hash);
     }
     
     // Use the hash to generate a hue value between 0 and 360
@@ -308,8 +309,8 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     return HSVColor.fromAHSV(1.0, hue, 0.7, 0.9).toColor();
   }
   
-  // Build sorted mood bars
-  List<Widget> _buildSortedMoodBars() {
+  // Build sorted category bars
+  List<Widget> _buildSortedCategoryBars() {
     if (_categoryCounts.isEmpty) {
       return [const Text('No recipe data available', style: TextStyle(color: Colors.white70))];
     }
@@ -318,15 +319,15 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     final sortedEntries = _categoryCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     
-    // Create a list of mood bar widgets
+    // Create a list of category bar widgets
     return sortedEntries.map((entry) {
       // Calculate percentage for the progress bar
       final percentage = _recipeCount > 0 
           ? entry.value / _recipeCount 
           : 0.0;
       
-      // Generate a color based on the mood name
-      final color = _getMoodColor(entry.key);
+      // Generate a color based on the category name
+      final color = _getCategoryColor(entry.key);
       
       // Check if this category is selected
       final isSelected = _selectedCategories.contains(entry.key.toLowerCase());
@@ -366,7 +367,7 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Mood name
+                // Category name
                 Expanded(
                   child: Text(
                     entry.key,
@@ -408,198 +409,6 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
         ),
       );
     }).toList();
-  }
-
-  // Build compact calendar
-  Widget _buildCalendar() {
-    // Get current month info
-    final firstDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final lastDayOfMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, 0);
-    
-    // Calculate days from previous month to show
-    final firstWeekday = firstDayOfMonth.weekday % 7; // 0 = Sunday, 1 = Monday, etc.
-    
-    // Generate dates for the grid
-    final List<DateTime> calendarDates = [];
-    
-    // Add days from previous month
-    for (var i = 0; i < firstWeekday; i++) {
-      calendarDates.add(firstDayOfMonth.subtract(Duration(days: firstWeekday - i)));
-    }
-    
-    // Add days from current month
-    for (var i = 1; i <= lastDayOfMonth.day; i++) {
-      calendarDates.add(DateTime(_focusedDay.year, _focusedDay.month, i));
-    }
-    
-    // Add days from next month to complete the grid (to multiple of 7)
-    final remainingDays = 7 - (calendarDates.length % 7);
-    if (remainingDays < 7) {
-      for (var i = 1; i <= remainingDays; i++) {
-        calendarDates.add(DateTime(_focusedDay.year, _focusedDay.month + 1, i));
-      }
-    }
-    
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Header with month name and navigation buttons - more compact
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left, color: Colors.white, size: 18),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              iconSize: 18,
-              onPressed: () {
-                setState(() {
-                  _focusedDay = DateTime(_focusedDay.year, _focusedDay.month - 1, 1);
-                });
-              },
-            ),
-            Text(
-              DateFormat.yMMM().format(_focusedDay), // Shorter month format
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right, color: Colors.white, size: 18),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              iconSize: 18,
-              onPressed: () {
-                setState(() {
-                  _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
-                });
-              },
-            ),
-          ],
-        ),
-        
-        // Days of week headers - more compact
-        Padding(
-          padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
-              Text('S', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('M', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('T', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('W', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('T', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('F', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text('S', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        
-        // Calendar grid - more compact
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 7,
-            childAspectRatio: 1.0,
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
-            mainAxisExtent: 28, // Fixed smaller height
-          ),
-          itemCount: calendarDates.length,
-          itemBuilder: (context, index) {
-            final date = calendarDates[index];
-            final isThisMonth = date.month == _focusedDay.month;
-            final isToday = isSameDay(date, DateTime.now());
-            final isSelected = isSameDay(date, _selectedDay);
-            final hasRecipes = hasRecipesOnDay(date);
-            final recipeCount = recipeCountForDay(date);
-            
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  // Toggle selection if the same day is tapped
-                  if (isSameDay(date, _selectedDay)) {
-                    _selectedDay = null;
-                  } else {
-                    _selectedDay = date;
-                  }
-                  // Force refresh the recipe list when a date is selected
-                  _journalKey.currentState?.refresh();
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isSelected 
-                    ? Colors.deepPurple 
-                    : isToday 
-                      ? Colors.deepPurple.shade100.withValues(alpha: 0.3) 
-                      : null,
-                  borderRadius: BorderRadius.circular(4), // Smaller radius
-                  border: hasRecipes 
-                    ? Border.all(color: Colors.deepPurple.shade300, width: 1) // Thinner border
-                    : null,
-                ),
-                child: Stack(
-                  children: [
-                    // Day number
-                    Center(
-                      child: Text(
-                        date.day.toString(),
-                        style: TextStyle(
-                          fontSize: 12, // Smaller font
-                          color: isThisMonth 
-                            ? isSelected 
-                              ? Colors.white 
-                              : [DateTime.saturday, DateTime.sunday].contains(date.weekday) 
-                                ? Colors.grey.shade400 
-                                : Colors.white
-                            : Colors.grey.shade700,
-                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                    
-                    // Recipe indicators - more compact
-                    if (hasRecipes)
-                      Positioned(
-                        bottom: 2, // Move up slightly
-                        right: 0,
-                        left: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                                for (var i = 0; i < (recipeCount < 3 ? recipeCount : 3); i++)
-                              Container(
-                                width: 4, // Smaller dots
-                                height: 4, // Smaller dots
-                                decoration: BoxDecoration(
-                                  color: Colors.deepPurple.shade300,
-                                  shape: BoxShape.circle,
-                                ),
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                              ),
-                            if (recipeCount > 3)
-                              Text(
-                                '+${recipeCount - 3}',
-                                style: TextStyle(
-                                  color: Colors.deepPurple.shade200,
-                                  fontSize: 6, // Smaller text
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
   }
 
   @override
@@ -769,7 +578,7 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                               if (_categoryCounts.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 // const Text(
-                                //   "All Moods:",
+                                //   "All Categorys:",
                                 //   style: TextStyle(
                                 //     color: Colors.white,
                                 //     fontWeight: FontWeight.bold,
@@ -791,8 +600,8 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                                 // ),
                                 // const SizedBox(height: 8),
                                 
-                                // Progress bars for each mood - more compact layout and sorted by count
-                                ..._buildSortedMoodBars(),
+                                // Progress bars for each category - more compact layout and sorted by count
+                                ..._buildSortedCategoryBars(),
                                 
                                 // Clear filters button when categories are selected
                                 if (_selectedCategories.isNotEmpty) ...[

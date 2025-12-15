@@ -72,7 +72,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           ),
         ),
         const SizedBox(height: 2),
-        const Text(
+        Text(
           "Your Personal AI-powered Chef",
           style: TextStyle(
             fontSize: 11,

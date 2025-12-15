@@ -859,8 +859,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                       "and the ability to share your recipes and images with others. "
                       "Unlock the full recipe experience ✨"
                     : "Tell me what you'd like to make! "
-                      "I will magically turn your ideas into a delicious recipe complete with ingredients, "
-                      "instructions, and a beautiful image. \n",
+                      "I will magically turn your ideas into a delicious recipe complete with ingredients & "
+                      "instructions. \n",
                   style: const TextStyle(fontSize: 13, color: Colors.white),
                 ),
                 const SizedBox(height: 16),

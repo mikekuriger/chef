@@ -33,8 +33,8 @@ class HelpScreen extends StatelessWidget {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
+          children: [
+            const Text(
               "AI-Chef Help",
               style: TextStyle(
                 fontSize: 18,
@@ -42,13 +42,13 @@ class HelpScreen extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               "Learn how to use AI-Chef features",
               style: TextStyle(
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
-                color: AppColors.headerSubtitle
+                color: AppColors.headerSubtitle,
               ),
             ),
           ],

@@ -1,7 +1,9 @@
 // screens/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:chef/theme/colors.dart';
+import 'package:chef/theme/theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ValueNotifier<int> refreshTrigger;
@@ -118,6 +120,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showThemeSelectionDialog() {
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: AppColors.purple950,
+          title: const Text(
+            'Choose Theme',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: themeProvider.availableThemes.map((theme) {
+              final themeColors = ThemeColors.getThemeColors(theme);
+              final isSelected = themeProvider.currentTheme == theme;
+
+              return ListTile(
+                leading: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: themeColors.purple600,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  themeColors.displayName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                onTap: () {
+                  themeProvider.setTheme(theme);
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ Theme changed to ${themeColors.displayName}'),
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildLoadingWidget() {
     return const Center(child: CircularProgressIndicator());
   }
@@ -190,6 +257,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   inactiveThumbColor: Colors.grey,
                   inactiveTrackColor: Colors.white30,
                 ),
+
+                // Theme selection
+                Consumer<ThemeProvider>(
+                  builder: (context, themeProvider, child) {
+                    final currentThemeColors = ThemeColors.getThemeColors(themeProvider.currentTheme);
+                    return ListTile(
+                      title: const Text(
+                        "App Theme",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: Text(
+                        "Current: ${currentThemeColors.displayName}",
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      trailing: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: currentThemeColors.purple600,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      onTap: _showThemeSelectionDialog,
+                    );
+                  },
+                ),
                 
                   // Recipe Journal Stats Visibility toggle
                   SwitchListTile(
@@ -224,8 +317,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
+          children: [
+            const Text(
               "Chef Settings",
               style: TextStyle(
                 fontSize: 18,
@@ -233,13 +326,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Colors.white,
               ),
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
               "Customize your app experience",
               style: TextStyle(
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
-                color: AppColors.headerSubtitle
+                color: AppColors.headerSubtitle,
               ),
             ),
           ],

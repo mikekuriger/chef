@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
-import 'package:intl/intl.dart';
-import 'package:chef/widgets/recipe_image.dart';
+// import 'package:intl/intl.dart';
+// import 'package:chef/widgets/recipe_image.dart.NO';
 import 'package:chef/services/image_store.dart'; // for RecipeImageKind
 
 
@@ -104,7 +104,7 @@ class RecipeJournalEditorWidgetState extends State<RecipeJournalEditorWidget> {
         itemBuilder: (context, index) {
           final recipe = _recipes[index];
           final categoriesStyle = _getToneStyle(recipe.categories);
-          final formattedDate = DateFormat('EEE, MMM d, y').format(recipe.createdAt.toLocal());
+          // final formattedDate = DateFormat('EEE, MMM d, y').format(recipe.createdAt.toLocal());
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),
@@ -118,24 +118,24 @@ class RecipeJournalEditorWidgetState extends State<RecipeJournalEditorWidget> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (recipe.imageFile != null && recipe.imageFile!.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                        child: RecipeImage(
-                          recipeId: recipe.id,
-                          url: recipe.imageFile!,
-                          kind: RecipeImageKind.tile,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                        ),
+                  // if (recipe.imageFile != null && recipe.imageFile!.isNotEmpty)
+                  //   ClipRRect(
+                  //     borderRadius: BorderRadius.circular(4),
+                  //       child: RecipeImage(
+                  //         recipeId: recipe.id,
+                  //         url: recipe.imageFile!,
+                  //         kind: RecipeImageKind.tile,
+                  //         width: 48,
+                  //         height: 48,
+                  //         fit: BoxFit.cover,
+                  //       ),
                       // child: Image.network(
                       //   recipe.imageFile!,
                       //   width: 48,
                       //   height: 48,
                       //   fit: BoxFit.cover,
                       // ),
-                    ),
+                    // ),
                   const SizedBox(width: 6),
                   // Date and description
                   Expanded(

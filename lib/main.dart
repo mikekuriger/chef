@@ -15,6 +15,7 @@ import 'package:chef/screens/profile_screen.dart';
 
 import 'package:chef/services/dio_client.dart';
 import 'package:chef/theme/colors.dart';
+import 'package:chef/theme/theme_provider.dart';
 import 'package:chef/constants.dart';
 
 import 'package:chef/repository/recipe_repository.dart';
@@ -35,6 +36,9 @@ void main() async {
           // includeHidden: true if you want hidden entries in the list model
           create: (ctx) => RecipeListModel(repo: ctx.read<RecipeRepository>())..init(),
         ),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider(),
+        ),
         // ChangeNotifierProvider<SubscriptionModel>(
           // create: (_) => SubscriptionModel()..init(),
         // ),
@@ -49,24 +53,28 @@ class ReciperApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chef',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
-      ),
-      home: const SplashScreen(),
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/dashboard': (context) => DashboardScreen(refreshTrigger: recipeEntryRefreshTrigger),
-        '/journal': (context) => RecipeJournalScreen(refreshTrigger: journalRefreshTrigger),
-        '/editor': (context) => RecipeJournalEditorScreen(refreshTrigger: journalRefreshTrigger),
-        // '/gallery': (context) => RecipeGalleryScreen(refreshTrigger: galleryRefreshTrigger),
-        '/image': (context) => const Placeholder(),
-        '/profile': (context) => ProfileScreen(refreshTrigger: profileRefreshTrigger),
-        '/forgot-password': (_) => const ForgotPasswordScreen(),
-        // '/subscription': (context) => const SubscriptionScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Chef',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            scaffoldBackgroundColor: AppColors.background,
+          ),
+          home: const SplashScreen(),
+          routes: {
+            '/login': (context) => const LoginScreen(),
+            '/register': (context) => const RegisterScreen(),
+            '/dashboard': (context) => DashboardScreen(refreshTrigger: recipeEntryRefreshTrigger),
+            '/journal': (context) => RecipeJournalScreen(refreshTrigger: journalRefreshTrigger),
+            '/editor': (context) => RecipeJournalEditorScreen(refreshTrigger: journalRefreshTrigger),
+            // '/gallery': (context) => RecipeGalleryScreen(refreshTrigger: galleryRefreshTrigger),
+            '/image': (context) => const Placeholder(),
+            '/profile': (context) => ProfileScreen(refreshTrigger: profileRefreshTrigger),
+            '/forgot-password': (_) => const ForgotPasswordScreen(),
+            // '/subscription': (context) => const SubscriptionScreen(),
+          },
+        );
       },
     );
   }
