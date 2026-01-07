@@ -1,6 +1,7 @@
 // services/api_service.dart
 // import 'dart:convert';
 import 'package:chef/models/recipe.dart';
+import 'package:chef/models/pantry_item.dart';
 // import 'package:chef/models/life_event.dart';
 // import 'package:chef/models/subscription.dart.NO';
 import 'dio_client.dart';
@@ -465,6 +466,58 @@ class ApiService {
     } else {
       throw Exception('Recipe submission failed: ${response.statusMessage}');
     }
+  }
+
+  // === Pantry ("My Pantry") AI import ===
+  // Contract: POST /api/pantry/parse
+  // Body: { "text": "..." }
+  // Response (200): { "cupboard": [..], "fridge": [..], "freezer": [..] }
+  static Future<Map<PantryLocation, List<String>>> parsePantryItems(String text) async {
+    final raw = text.trim();
+    if (raw.isEmpty) {
+      return {
+        PantryLocation.cupboard: const [],
+        PantryLocation.fridge: const [],
+        PantryLocation.freezer: const [],
+      };
+    }
+
+    final res = await DioClient.dio.post(
+      '/api/pantry/parse',
+      data: {'text': raw},
+      options: Options(
+        contentType: Headers.jsonContentType,
+        validateStatus: (_) => true,
+      ),
+    );
+
+    final code = res.statusCode ?? 0;
+    if (code != 200) {
+      final msg = (res.data is Map && (res.data['error'] != null))
+          ? res.data['error'].toString()
+          : 'Pantry parse failed (HTTP $code)';
+      throw Exception(msg);
+    }
+
+    if (res.data is! Map) {
+      throw Exception('Pantry parse returned unexpected payload');
+    }
+
+    final body = Map<String, dynamic>.from(res.data);
+
+    List<String> listFor(String key) {
+      final v = body[key];
+      if (v is List) {
+        return v.map((e) => e.toString()).toList(growable: false);
+      }
+      return const [];
+    }
+
+    return {
+      PantryLocation.cupboard: listFor('cupboard'),
+      PantryLocation.fridge: listFor('fridge'),
+      PantryLocation.freezer: listFor('freezer'),
+    };
   }
 
   // Generate Image

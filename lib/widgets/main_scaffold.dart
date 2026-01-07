@@ -1,19 +1,25 @@
 // widgets/main_scaffold.dart
 import 'package:flutter/material.dart';
 import 'package:chef/theme/colors.dart';
+import 'package:chef/theme/theme_provider.dart';
 import 'package:chef/screens/dashboard_screen.dart';
 import 'package:chef/screens/recipe_journal_screen.dart';
 import 'package:chef/screens/recipe_journal_editor_screen.dart';
-import 'package:chef/screens/profile_screen.dart';
+// import 'package:chef/screens/profile_screen.dart.old';
 import 'package:chef/screens/settings_screen.dart';
 import 'package:chef/screens/help_screen.dart';
+import 'package:chef/screens/pantry_screen.dart';
+import 'package:chef/screens/manage_recipes_screen.dart';
 import 'package:chef/constants.dart';
 import 'package:chef/utils/session_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:chef/state/pantry_model.dart';
 
 // Refresh triggers for each screen
 final ValueNotifier<int> dreamEntryRefreshTrigger = ValueNotifier<int>(0);
 final ValueNotifier<int> journalRefreshTrigger = ValueNotifier<int>(0);
 // final ValueNotifier<int> galleryRefreshTrigger = ValueNotifier<int>(0);
+final ValueNotifier<int> pantryRefreshTrigger = ValueNotifier<int>(0);
 final ValueNotifier<int> editorRefreshTrigger = ValueNotifier<int>(0);
 final ValueNotifier<int> settingsRefreshTrigger = ValueNotifier<int>(0);
 
@@ -29,7 +35,6 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   late int _selectedIndex;
-  late final List<Widget> _views;
   bool _navEnabled = true;
   
   Widget _getTitleForIndex(int index) {
@@ -42,7 +47,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         title = "Recipe Journal  📖";
         break;
       case 2:
-        title = "Manage Recipes ✏️";
+        title = "My Pantry 🧺";
         break;
       default:
         title = "Recipe";
@@ -82,31 +87,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    
-    _views = [
-      // DashboardScreen(refreshTrigger: dreamEntryRefreshTrigger), // index 0
-      DashboardScreen(
-        refreshTrigger: dreamEntryRefreshTrigger,
-        onAnalyzingChange: (bool analyzing) {
-          setState(() {
-            _navEnabled = !analyzing;
-          });
-        },
-      ),
-      RecipeJournalScreen(refreshTrigger: journalRefreshTrigger), // index 1
-      // RecipeGalleryScreen(refreshTrigger: galleryRefreshTrigger), // index 2
-      // HelpScreen(refreshTrigger: profileRefreshTrigger), // index 3
-      RecipeJournalEditorScreen(refreshTrigger: editorRefreshTrigger), // index 2
-      ProfileScreen(
-        refreshTrigger: profileRefreshTrigger,
-        onDone: () {
-          setState(() {
-            _selectedIndex = 1; 
-          });
-          // _loadUserName(); 
-        },
-      ),
-    ];
   }
 
   void _onBottomNavTapped(int index) {
@@ -122,7 +102,9 @@ class _MainScaffoldState extends State<MainScaffold> {
         journalRefreshTrigger.value++;
         break;
       case 2:
-        editorRefreshTrigger.value++;
+        pantryRefreshTrigger.value++;
+        // keep pantry list fresh on tab switch
+        context.read<PantryModel>().refresh();
         break;
     }
     
@@ -134,6 +116,38 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    // Subscribe so theme changes trigger rebuilds (AppColors are set via ThemeProvider).
+    context.watch<ThemeProvider>();
+
+    // IMPORTANT: Don't cache view widget instances.
+    // If we keep the exact same Widget objects around, Flutter may skip updating
+    // them on rebuild, which prevents theme changes from propagating.
+    // Using stable keys preserves state while allowing rebuilds.
+    final views = <Widget>[
+      DashboardScreen(
+        key: const PageStorageKey('tab_dashboard'),
+        refreshTrigger: dreamEntryRefreshTrigger,
+        onAnalyzingChange: (bool analyzing) {
+          setState(() {
+            _navEnabled = !analyzing;
+          });
+        },
+      ),
+      RecipeJournalScreen(
+        key: const PageStorageKey('tab_journal'),
+        refreshTrigger: journalRefreshTrigger,
+      ),
+      PantryScreen(key: const PageStorageKey('tab_pantry')),
+      // ProfileScreen(
+      //   key: const PageStorageKey('tab_profile'),
+      //   refreshTrigger: profileRefreshTrigger,
+      //   onDone: () {
+      //     setState(() {
+      //       _selectedIndex = 1;
+      //     });
+      //   },
+      // ),
+    ];
     
     return Scaffold(
       appBar: AppBar(
@@ -141,109 +155,246 @@ class _MainScaffoldState extends State<MainScaffold> {
         elevation: 4,
         automaticallyImplyLeading: false,
         title: _getTitleForIndex(_selectedIndex),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            color: Colors.grey[850],
-            // color: AppColors.purple900,
-            onSelected: (String route) async {
-              // ✅ force keyboard to close when selecting from menu
-              FocusScope.of(context).unfocus();
-              
-              switch (route) {
-                case '/editor':
-                  setState(() {
-                    editorRefreshTrigger.value++;
-                    _selectedIndex = 2; 
-                  });
-                  break;
+          actions: [
+            Builder(
+              builder: (btnContext) {
+                return IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  onPressed: () async {
+                    // iPad check (compute before await)
+                    final isIPad =
+                        Theme.of(btnContext).platform == TargetPlatform.iOS &&
+                        MediaQuery.of(btnContext).size.shortestSide >= 600;
 
-                case '/profile':
-                  setState(() {
-                    _selectedIndex = 3; 
-                  });
-                  break;
+                    if (isIPad) {
+                      await Future<void>.delayed(const Duration(milliseconds: 300));
+                      if (!btnContext.mounted) return;
+                      if (!mounted) return;
+                    }
 
-                case '/settings':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        refreshTrigger: settingsRefreshTrigger,
+                    final overlayBox =
+                        Overlay.of(btnContext).context.findRenderObject() as RenderBox;
+                    final buttonBox = btnContext.findRenderObject() as RenderBox;
+                    final pos = buttonBox.localToGlobal(Offset.zero, ancestor: overlayBox);
+
+                    final route = await showMenu<String>(
+                      context: btnContext,
+                      color: Colors.grey[850],
+                      position: RelativeRect.fromLTRB(
+                        pos.dx,
+                        pos.dy + buttonBox.size.height,
+                        overlayBox.size.width - (pos.dx + buttonBox.size.width),
+                        overlayBox.size.height - (pos.dy + buttonBox.size.height),
                       ),
-                    ),
-                  );
-                  break;
-               
-                case '/help':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const HelpScreen(),
-                    ),
-                  );
-                  break;
-                case '/login':
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                  break;
-                case 'logout':
-                  await performLogout(context);
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem(
-                value: '/editor',
-                child: Row(
-                  children: [
-                    Icon(Icons.visibility_off_outlined, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Hide/Delete', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-              
-              const PopupMenuItem(
-                value: '/settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings_outlined, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Settings', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
+                      items: const [
+                        PopupMenuItem(
+                          value: '/editor',
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility_off_outlined, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Manage Recipes', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
 
-              const PopupMenuItem(
-                value: '/help',
-                child: Row(
-                  children: [
-                    Icon(Icons.help_outline, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Help', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Logout', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+                        PopupMenuItem(
+                          value: '/settings',
+                          child: Row(
+                            children: [
+                              Icon(Icons.settings_outlined, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Settings', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: '/help',
+                          child: Row(
+                            children: [
+                              Icon(Icons.help_outline, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Help', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'logout',
+                          child: Row(
+                            children: [
+                              Icon(Icons.logout, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text('Logout', style: TextStyle(color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+
+                    if (!btnContext.mounted || route == null) return;
+
+                    FocusScope.of(btnContext).unfocus();
+
+                    switch (route) {
+                      case '/editor':
+                        editorRefreshTrigger.value++;
+                        Navigator.push(
+                          btnContext,
+                          MaterialPageRoute(
+                            builder: (_) => ManageRecipesScreen(refreshTrigger: editorRefreshTrigger),
+                          ),
+                        );
+                        break;
+
+                      case '/profile':
+                        setState(() {
+                          _selectedIndex = 3;
+                        });
+                        break;
+
+                      case '/settings':
+                        Navigator.push(
+                          btnContext,
+                          MaterialPageRoute(
+                            builder: (_) => SettingsScreen(
+                              refreshTrigger: settingsRefreshTrigger,
+                            ),
+                          ),
+                        );
+                        break;
+
+
+
+                      case '/help':
+                        Navigator.push(
+                          btnContext,
+                          MaterialPageRoute(builder: (_) => const HelpScreen()),
+                        );
+                        break;
+
+                      case '/login':
+                        Navigator.pushNamedAndRemoveUntil(
+                          btnContext,
+                          '/login',
+                          (route) => false,
+                        );
+                        break;
+
+                      case 'logout':
+                        await performLogout(btnContext);
+                        break;
+                    }
+                  },
+                );
+              },
+            ),
+          ],
+
+
+
+        // actions: [
+        //   PopupMenuButton<String>(
+        //     icon: const Icon(Icons.menu, color: Colors.white),
+        //     color: Colors.grey[850],
+        //     // color: AppColors.purple900,
+        //     onSelected: (String route) async {
+        //       // ✅ force keyboard to close when selecting from menu
+        //       FocusScope.of(context).unfocus();
+              
+        //       switch (route) {
+        //         case '/editor':
+        //           setState(() {
+        //             editorRefreshTrigger.value++;
+        //             _selectedIndex = 2; 
+        //           });
+        //           break;
+
+        //         case '/profile':
+        //           setState(() {
+        //             _selectedIndex = 3; 
+        //           });
+        //           break;
+
+        //         case '/settings':
+        //           Navigator.push(
+        //             context,
+        //             MaterialPageRoute(
+        //               builder: (context) => SettingsScreen(
+        //                 refreshTrigger: settingsRefreshTrigger,
+        //               ),
+        //             ),
+        //           );
+        //           break;
+               
+        //         case '/help':
+        //           Navigator.push(
+        //             context,
+        //             MaterialPageRoute(
+        //               builder: (context) => const HelpScreen(),
+        //             ),
+        //           );
+        //           break;
+        //         case '/login':
+        //           Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+        //           break;
+        //         case 'logout':
+        //           await performLogout(context);
+        //           break;
+        //       }
+        //     },
+        //     itemBuilder: (BuildContext context) => [
+        //       const PopupMenuItem(
+        //         value: '/editor',
+        //         child: Row(
+        //           children: [
+        //             Icon(Icons.visibility_off_outlined, color: Colors.white),
+        //             SizedBox(width: 8),
+        //             Text('Hide/Delete', style: TextStyle(color: Colors.white)),
+        //           ],
+        //         ),
+        //       ),
+              
+        //       const PopupMenuItem(
+        //         value: '/settings',
+        //         child: Row(
+        //           children: [
+        //             Icon(Icons.settings_outlined, color: Colors.white),
+        //             SizedBox(width: 8),
+        //             Text('Settings', style: TextStyle(color: Colors.white)),
+        //           ],
+        //         ),
+        //       ),
+
+        //       const PopupMenuItem(
+        //         value: '/help',
+        //         child: Row(
+        //           children: [
+        //             Icon(Icons.help_outline, color: Colors.white),
+        //             SizedBox(width: 8),
+        //             Text('Help', style: TextStyle(color: Colors.white)),
+        //           ],
+        //         ),
+        //       ),
+        //       const PopupMenuItem(
+        //         value: 'logout',
+        //         child: Row(
+        //           children: [
+        //             Icon(Icons.logout, color: Colors.white),
+        //             SizedBox(width: 8),
+        //             Text('Logout', style: TextStyle(color: Colors.white)),
+        //           ],
+        //         ),
+        //       ),
+        //     ],
+        //   ),
+        // ],
       ),
       // body: widget.body,
       body: IndexedStack(
         index: _selectedIndex,
-        children: _views,
+        children: views,
       ),
-      bottomNavigationBar: (_selectedIndex == 4 || !_navEnabled)
+      bottomNavigationBar: (_selectedIndex == 3 || !_navEnabled)
     ? null // hide nav on profile page OR when analyzing
     : BottomNavigationBar(
         currentIndex: (_selectedIndex == 3) ? 1 : _selectedIndex.clamp(0, 2),
@@ -270,8 +421,8 @@ class _MainScaffoldState extends State<MainScaffold> {
             index: 1,
           ),
           _buildNavItem(
-            icon: Icons.no_food,
-            label: 'Manage Recipes',
+            icon: Icons.kitchen_outlined,
+            label: 'My Pantry',
             index: 2,
           ),
         ],

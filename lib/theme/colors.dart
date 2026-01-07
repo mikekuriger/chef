@@ -11,20 +11,20 @@ enum AppTheme {
 }
 
 class ThemeColors {
-  final Color purple200;
-  final Color purple400;
-  final Color purple600;
-  final Color purple700;
-  final Color purple800;
-  final Color purple850;
-  final Color purple900;
-  final Color purple950;
-  final Color background;
-  final Color headerSubtitle;
-  final Color black;
-  final Color green1;
-  final Color red1;
-  final Color yellow1;
+  final Color purple200; // unused
+  final Color purple400; // share/print buttons, header subtitle
+  final Color purple600; // build button, add button
+  final Color purple700; // pantry swipe to delete
+  final Color purple800; // bottom nav highlighted button + help screen card header color
+  final Color purple850; // unused
+  final Color purple900; // settings background, pantry popup-menu background
+  final Color purple950; // settings card background, header background, footer background, pantry tab background, pantry items
+  final Color background; // add recipe screen background, my recipes screen background, my pantry screen background, manage recipes background  
+  final Color headerSubtitle; // duh, used for header subtitles in various screens
+  final Color black; // stats background, help screen background
+  final Color green1; // unused
+  final Color red1; // unused
+  final Color yellow1; // pantry screen error text
 
   const ThemeColors({
     required this.purple200,
@@ -47,34 +47,38 @@ class ThemeColors {
     switch (theme) {
       case AppTheme.purple:
         return const ThemeColors(
-          purple200: Color(0xFFDDD6FE), // very light teal tint
-          purple400: Color(0xFFC084FC), // medium teal
-          purple600: Color(0xFF9333EA), // strong teal
-          purple700: Color(0xFF7E22CE), // deeper teal
-          purple800: Color.fromARGB(255, 91, 4, 167), // dark teal
-          purple850: Color.fromARGB(255, 71, 4, 131),    // darker teal
-          purple900: Color.fromARGB(255, 51, 0, 95),    // near-black teal
-          purple950: Color.fromARGB(255, 25, 0, 48),    // deepest teal
-          background: Color.fromARGB(255, 24, 2, 62),   // very dark teal-blue
-          headerSubtitle: Color(0xFFC084FC), // medium teal
+          green1: Color.fromARGB(255, 206, 34, 34), 
+
+          purple200: Color(0xFFDDD6FE), 
+          purple400: Color(0xFFC084FC),
+          purple600: Color(0xFF9333EA), 
+          purple700: Color.fromARGB(255, 206, 34, 34), 
+          // purple700: Color(0xFF7E22CE), 
+          purple800: Color.fromARGB(255, 91, 4, 167), 
+          purple850: Color.fromARGB(255, 71, 4, 131),
+          purple900: Color.fromARGB(255, 51, 0, 95),
+          purple950: Color.fromARGB(255, 25, 0, 48),
+          background: Color.fromARGB(255, 24, 2, 62),
+          headerSubtitle: Color(0xFFC084FC),
           black: Color(0xFF000000),
-          green1: Color(0xFF4CAF50),
+          // green1: Color(0xFF4CAF50),
           red1: Color(0xFFE53935),
           yellow1: Color(0xFFFBC02D),
         );
 
       case AppTheme.teal:
         return const ThemeColors(
-          purple200: Color(0xFFBFEFEA), // very light teal tint
-          purple400: Color(0xFF5CCFC3), // medium teal
-          purple600: Color(0xFF1BAA9B), // strong teal
-          purple700: Color(0xFF13897E), // deeper teal
-          purple800: Color.fromARGB(255, 11, 108, 100), // dark teal
-          purple850: Color.fromARGB(255, 8, 86, 80),    // darker teal
-          purple900: Color.fromARGB(255, 6, 62, 58),    // near-black teal
-          purple950: Color.fromARGB(255, 3, 38, 36),    // deepest teal
-          background: Color.fromARGB(255, 2, 28, 30),   // very dark teal-blue
-          headerSubtitle: Color(0xFF5CCFC3), // medium teal
+          purple200: Color(0xFFBFEFEA),
+          purple400: Color(0xFF5CCFC3),
+          purple600: Color(0xFF1BAA9B),
+          purple700: Color.fromARGB(255, 206, 34, 34), 
+          // purple700: Color(0xFF13897E),
+          purple800: Color.fromARGB(255, 11, 108, 100),
+          purple850: Color.fromARGB(255, 8, 86, 80),
+          purple900: Color.fromARGB(255, 6, 62, 58),
+          purple950: Color.fromARGB(255, 3, 38, 36),
+          background: Color.fromARGB(255, 2, 28, 30),
+          headerSubtitle: Color(0xFF5CCFC3),
           black: Color(0xFF000000),
           green1: Color(0xFF4CAF50),
           red1: Color(0xFFE53935),
@@ -83,16 +87,17 @@ class ThemeColors {
 
       case AppTheme.blue:
         return const ThemeColors(
-          purple200: Color(0xFFD6E4FF), // very light blue
-          purple400: Color(0xFF7AA2FF), // medium blue
-          purple600: Color(0xFF3B82F6), // strong blue
-          purple700: Color(0xFF2563EB), // deeper blue
-          purple800: Color.fromARGB(255, 30, 64, 175),  // dark blue
-          purple850: Color.fromARGB(255, 23, 52, 148),  // darker blue
-          purple900: Color.fromARGB(255, 17, 40, 120),  // near-black blue
-          purple950: Color.fromARGB(255, 10, 25, 75),   // deepest blue
-          background: Color.fromARGB(255, 8, 18, 55),   // very dark blue
-          headerSubtitle: Color(0xFF7AA2FF), // medium blue
+          purple200: Color(0xFFD6E4FF),
+          purple400: Color(0xFF7AA2FF),
+          purple600: Color(0xFF3B82F6),
+          purple700: Color.fromARGB(255, 206, 34, 34),
+          // purple700: Color(0xFF2563EB),
+          purple800: Color.fromARGB(255, 30, 64, 175),
+          purple850: Color.fromARGB(255, 23, 52, 148),
+          purple900: Color.fromARGB(255, 17, 40, 120),
+          purple950: Color.fromARGB(255, 10, 25, 75),
+          background: Color.fromARGB(255, 8, 18, 55),
+          headerSubtitle: Color(0xFF7AA2FF),
           black: Color(0xFF000000),
           green1: Color(0xFF4CAF50),
           red1: Color(0xFFE53935),
@@ -104,7 +109,8 @@ class ThemeColors {
           purple200: Color(0xFFD1FAE5),
           purple400: Color(0xFF4ADE80),
           purple600: Color(0xFF16A34A),
-          purple700: Color(0xFF15803D),
+          purple700: Color.fromARGB(255, 206, 34, 34),
+          // purple700: Color(0xFF15803D),
           purple800: Color.fromARGB(255, 22, 101, 52),
           purple850: Color.fromARGB(255, 16, 82, 42),
           purple900: Color.fromARGB(255, 10, 61, 31),
@@ -122,7 +128,8 @@ class ThemeColors {
           purple200: Color(0xFFFFEDD5),
           purple400: Color(0xFFFB923C),
           purple600: Color(0xFFEA580C),
-          purple700: Color(0xFFC2410C),
+          purple700: Color.fromARGB(255, 206, 34, 34),
+          // purple700: Color(0xFFC2410C),
           purple800: Color.fromARGB(255, 154, 52, 18),
           purple850: Color.fromARGB(255, 124, 41, 14),
           purple900: Color.fromARGB(255, 92, 30, 10),
@@ -140,7 +147,8 @@ class ThemeColors {
           purple200: Color(0xFFFFE4E6),
           purple400: Color(0xFFFB7185),
           purple600: Color(0xFFE11D48),
-          purple700: Color(0xFFBE123C),
+          purple700: Color.fromARGB(255, 206, 34, 34),
+          // purple700: Color(0xFFBE123C),
           purple800: Color.fromARGB(255, 159, 18, 57),
           purple850: Color.fromARGB(255, 122, 13, 43),
           purple900: Color.fromARGB(255, 88, 9, 30),

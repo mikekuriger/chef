@@ -10,6 +10,8 @@ class RecipeDao {
   factory RecipeDao() => _instance;
   RecipeDao._internal();
 
+  static const int _dbVersion = 3;
+
   Database? _db;
 
   Future<Database> _open() async {
@@ -19,7 +21,7 @@ class RecipeDao {
 
     _db = await openDatabase(
       dbPath,
-      version: 1,
+      version: _dbVersion,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE recipes (
@@ -50,6 +52,75 @@ class RecipeDao {
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_recipes_archived ON recipes(archived)'
         );
+
+        // Pantry items ("My Pantry" feature)
+        await db.execute('''
+          CREATE TABLE pantry_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            normalized_name TEXT NOT NULL,
+            location TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(user_id, normalized_name, location)
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_pantry_user_location_updated ON pantry_items(user_id, location, updated_at DESC)'
+        );
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Fresh upgrade path from v1 -> v3: create the v3 pantry table directly.
+          await db.execute('''
+            CREATE TABLE pantry_items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              name TEXT NOT NULL,
+              normalized_name TEXT NOT NULL,
+              location TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(user_id, normalized_name, location)
+            )
+          ''');
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_pantry_user_location_updated ON pantry_items(user_id, location, updated_at DESC)'
+          );
+          return;
+        }
+
+        if (oldVersion < 3) {
+          // v2 -> v3 migration: rebuild table to change UNIQUE constraint.
+          await db.transaction((txn) async {
+            await txn.execute('ALTER TABLE pantry_items RENAME TO pantry_items_old');
+            await txn.execute('''
+              CREATE TABLE pantry_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                normalized_name TEXT NOT NULL,
+                location TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_id, normalized_name, location)
+              )
+            ''');
+            await txn.execute(
+              'CREATE INDEX IF NOT EXISTS idx_pantry_user_location_updated ON pantry_items(user_id, location, updated_at DESC)'
+            );
+            await txn.execute('''
+              INSERT INTO pantry_items (
+                id, user_id, name, normalized_name, location, created_at, updated_at
+              )
+              SELECT
+                id, 0, name, normalized_name, location, created_at, updated_at
+              FROM pantry_items_old
+            ''');
+            await txn.execute('DROP TABLE pantry_items_old');
+          });
+        }
       },
     );
     return _db!;
