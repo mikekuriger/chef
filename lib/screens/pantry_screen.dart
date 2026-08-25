@@ -232,7 +232,7 @@ class _PantryLocationViewState extends State<_PantryLocationView> {
                 ? _EmptyState(location: widget.location)
                 : ListView.separated(
                     itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
                     itemBuilder: (ctx, idx) {
                       final item = filtered[idx];
                       return Dismissible(
@@ -751,6 +751,6 @@ class _AiImportReviewState extends State<_AiImportReview> {
 
 class _SelectableName {
   final String name;
-  bool selected;
-  _SelectableName({required this.name, this.selected = true});
+  bool selected = true;
+  _SelectableName({required this.name});
 }

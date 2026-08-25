@@ -184,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     _loadUserName();
     _loadDraftText();
-    _initSpeechApi();
+    // _initSpeechApi();
     // _loadQuota();
 
 
@@ -240,25 +240,25 @@ class _DashboardScreenState extends State<DashboardScreen>
 // }
   
   // Initialize speech recognition with Google Cloud Speech API
-  Future<void> _initSpeechApi() async {
-    try {
-      _audioRecorder = FlutterSoundRecorder();
-      await _audioRecorder!.openRecorder();
-      // iOS stability tweaks
-      try {
-        await _audioRecorder!.setSubscriptionDuration(const Duration(milliseconds: 50));
-      } catch (_) {}
+  // Future<void> _initSpeechApi() async {
+  //   try {
+  //     _audioRecorder = FlutterSoundRecorder();
+  //     await _audioRecorder!.openRecorder();
+  //     // iOS stability tweaks
+  //     try {
+  //       await _audioRecorder!.setSubscriptionDuration(const Duration(milliseconds: 50));
+  //     } catch (_) {}
 
-      final raw = await rootBundle.loadString('assets/gcloud-key.json');
-      final sa  = ServiceAccount.fromString(raw);
-      _speech   = SpeechToText.viaServiceAccount(sa);
+  //     final raw = await rootBundle.loadString('assets/gcloud-key.json');
+  //     final sa  = ServiceAccount.fromString(raw);
+  //     _speech   = SpeechToText.viaServiceAccount(sa);
 
-      debugPrint('STT init ok');
-    } catch (e) {
-      debugPrint('STT init failed: $e');
-      _showErrorSnackBar('Failed to initialize speech recognition');
-    }
-  }
+  //     debugPrint('STT init ok');
+  //   } catch (e) {
+  //     debugPrint('STT init failed: $e');
+  //     _showErrorSnackBar('Failed to initialize speech recognition');
+  //   }
+  // }
 
   
   // Stop recording and clean up
@@ -479,7 +479,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!granted) return;
 
     // client ready
-    if (_audioRecorder == null) await _initSpeechApi();
+    // if (_audioRecorder == null) await _initSpeechApi();
 
     // stop any audio that may hold session
     try { await _player.stop(); } catch (_) {}

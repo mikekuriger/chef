@@ -24,7 +24,8 @@ class RecipeJournalScreen extends StatefulWidget {
 
 class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
   bool _statsExpanded = false;
-  Map<String, int> _categoryCounts = {};
+  Map<String, int> _courseCounts = {};
+  Map<String, int> _mainIngredientCounts = {};
 
   // state fields
   int _recipeCount = 0;
@@ -45,8 +46,9 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
   // bool _showCalendar = false; // Collapsed by default
   Map<DateTime, List<Recipe>> _recipesByDate = {};
   
-  // Category filtering state
-  final Set<String> _selectedCategories = {};
+  // Category filtering state (fixed taxonomy: Course + Main Ingredient)
+  final Set<String> _selectedCourses = {};
+  final Set<String> _selectedMainIngredients = {};
   
   // Visibility preferences
   bool _showStatsSection = true; // Controls if stats section is shown at all
@@ -110,29 +112,33 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     setState(() {
       _recipeCount = recipes.length;
 
-      final categoryMap = <String, int>{};
+      final courseMap = <String, int>{};
+      final mainIngredientMap = <String, int>{};
 
       for (final r in recipes) {
-        final raw = (r.categories).trim();
-        if (raw.isEmpty) continue;
+        final course = r.course?.trim();
+        final courseKey = (course == null || course.isEmpty) ? kUncategorizedLabel : course;
+        courseMap[courseKey] = (courseMap[courseKey] ?? 0) + 1;
 
-        // Split comma-separated list into individual categories
-        final parts = raw
+        final rawMain = r.mainIngredient?.trim();
+        if (rawMain == null || rawMain.isEmpty) continue;
+        // main_ingredient can be a comma-joined "Chicken, Pasta/Grain"
+        final unique = rawMain
             .split(',')
-            .map((s) => s.trim().toLowerCase())
-            .where((s) => s.isNotEmpty);
-
-        // Optional: de-dupe categories within the same recipe
-        final unique = parts.toSet();
-
-        for (final cat in unique) {
-          categoryMap[cat] = (categoryMap[cat] ?? 0) + 1;
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toSet();
+        for (final m in unique) {
+          mainIngredientMap[m] = (mainIngredientMap[m] ?? 0) + 1;
         }
       }
 
-      _categoryCounts = categoryMap;
+      _courseCounts = courseMap;
+      _mainIngredientCounts = mainIngredientMap;
 
-      final mostCommon = categoryMap.entries.fold<MapEntry<String, int>?>(null, (prev, entry) {
+      final mostCommon = courseMap.entries
+          .where((e) => e.key != kUncategorizedLabel)
+          .fold<MapEntry<String, int>?>(null, (prev, entry) {
         return (prev == null || entry.value > prev.value) ? entry : prev;
       });
 
@@ -231,21 +237,30 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
       }).toList();
     }
     
-    // Then filter by selected categories if any are selected
-    if (_selectedCategories.isNotEmpty) {
+    // Then filter by selected Course chips (recipes with no course fall
+    // under the "Uncategorized" chip)
+    if (_selectedCourses.isNotEmpty) {
       dateFiltered = dateFiltered.where((recipe) {
-        final recipeCategories = (recipe.categories).trim()
-            .split(',')
-            .map((s) => s.trim().toLowerCase())
-            .where((s) => s.isNotEmpty)
-            .toSet();
-        
-        // Check if recipe has any of the selected categories
-        return _selectedCategories.any((selectedCat) => 
-          recipeCategories.contains(selectedCat));
+        final course = recipe.course?.trim();
+        final courseKey = (course == null || course.isEmpty) ? kUncategorizedLabel : course;
+        return _selectedCourses.contains(courseKey);
       }).toList();
     }
-    
+
+    // Then filter by selected Main Ingredient chips
+    if (_selectedMainIngredients.isNotEmpty) {
+      dateFiltered = dateFiltered.where((recipe) {
+        final raw = recipe.mainIngredient?.trim();
+        if (raw == null || raw.isEmpty) return false;
+        final recipeMainIngredients = raw
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toSet();
+        return _selectedMainIngredients.any(recipeMainIngredients.contains);
+      }).toList();
+    }
+
     return dateFiltered;
   }
 
@@ -262,153 +277,113 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
     return _recipesByDate[normalizedDay]?.length ?? 0;
   }
   
-  // Generate a consistent color for each category
+  // Generate a consistent color for each fixed-taxonomy category label
   Color _getCategoryColor(String category) {
-    // App's predefined categorys with their colors
-    // Using text colors for dark backgrounds to ensure visibility
+    // Colors for the fixed Course / Main Ingredient taxonomy.
+    // Using text colors for dark backgrounds to ensure visibility.
     final Map<String, Color> predefinedCategorys = {
-      'spicy': Colors.red.shade200,
-      'vegetarian': Colors.green.shade200,
-      'vegan': Colors.green.shade300,
-      'dessert': Colors.pink.shade200,
       'breakfast': Colors.orange.shade200,
-      'dinner': Colors.indigo.shade200,
       'lunch': Colors.blue.shade200,
+      'dinner': Colors.indigo.shade200,
+      'appetizer': Colors.teal.shade200,
+      'side dish': Colors.lime.shade200,
       'soup': Colors.brown.shade200,
       'salad': Colors.lightGreen.shade200,
+      'dessert': Colors.pink.shade200,
+      'snack': Colors.amber.shade200,
+      'drink': Colors.cyan.shade200,
+      'sauce/condiment': Colors.deepOrange.shade200,
+      'chicken': Colors.yellow.shade200,
+      'beef': Colors.red.shade300,
+      'pork': Colors.pink.shade300,
+      'seafood': Colors.lightBlue.shade200,
+      'egg': Colors.amber.shade100,
+      'pasta/grain': Colors.brown.shade100,
+      'vegetarian': Colors.green.shade200,
+      'vegan': Colors.green.shade300,
+      'other': Colors.blueGrey.shade200,
+      'uncategorized': Colors.grey.shade400,
     };
-    
-    // Normalize the category string for comparison
+
     final normalizedCategory = category.toLowerCase().trim();
-    
-    // Check for exact matches first
     if (predefinedCategorys.containsKey(normalizedCategory)) {
       return predefinedCategorys[normalizedCategory]!;
     }
-    
-    // Check for partial matches (e.g., if category contains "peaceful" or "gentle")
-    for (final entry in predefinedCategorys.entries) {
-      final keywords = entry.key.split('/').map((k) => k.trim().toLowerCase());
-      if (keywords.any((keyword) => normalizedCategory.contains(keyword))) {
-        return entry.value;
-      }
-    }
-    
-    // Otherwise generate a color based on the category string
-    // Use a simple hash function to ensure the same category always gets the same color
+
+    // Fallback: generate a stable color from the string's hash so any
+    // future taxonomy addition still gets a consistent color automatically.
     int hash = 0;
     for (int i = 0; i < category.length; i++) {
       hash = category.codeUnitAt(i) + ((hash << 5) - hash);
     }
-    
-    // Use the hash to generate a hue value between 0 and 360
     final hue = (hash % 360).abs().toDouble();
-    
-    // Create a color with the hue and fixed saturation/brightness
-    // Using HSV color model for more vibrant colors
     return HSVColor.fromAHSV(1.0, hue, 0.7, 0.9).toColor();
   }
-  
-  // Build sorted category bars
-  List<Widget> _buildSortedCategoryBars() {
-    if (_categoryCounts.isEmpty) {
-      return [const Text('No recipe data available', style: TextStyle(color: Colors.white70))];
+
+  // Build a row of tappable category chips (e.g. Course, or Main Ingredient)
+  // sorted by how many recipes use them. This replaces the old freeform
+  // tag-cloud progress bars — a small, fixed set of buttons the user can
+  // tap to browse (Dinner, Chicken, Seafood...) instead of scrolling a wall
+  // of AI-invented tags.
+  Widget _buildCategoryChipRow({
+    required Map<String, int> counts,
+    required Set<String> selected,
+    required void Function(String) onToggle,
+  }) {
+    if (counts.isEmpty) {
+      return const Text('No recipe data available', style: TextStyle(color: Colors.white70));
     }
-    
-    // Sort entries by count (descending)
-    final sortedEntries = _categoryCounts.entries.toList()
+
+    final sortedEntries = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    
-    // Create a list of category bar widgets
-    return sortedEntries.map((entry) {
-      // Calculate percentage for the progress bar
-      final percentage = _recipeCount > 0 
-          ? entry.value / _recipeCount 
-          : 0.0;
-      
-      // Generate a color based on the category name
-      final color = _getCategoryColor(entry.key);
-      
-      // Check if this category is selected
-      final isSelected = _selectedCategories.contains(entry.key.toLowerCase());
-      
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: GestureDetector(
-          onTap: () {
-            setState(() {
-              final categoryKey = entry.key.toLowerCase();
-              if (isSelected) {
-                _selectedCategories.remove(categoryKey);
-              } else {
-                _selectedCategories.add(categoryKey);
-              }
-            });
-          },
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: sortedEntries.map((entry) {
+        final color = _getCategoryColor(entry.key);
+        final isSelected = selected.contains(entry.key);
+
+        return GestureDetector(
+          onTap: () => onToggle(entry.key),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
             decoration: BoxDecoration(
-              color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
+              color: isSelected ? color.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? color : Colors.transparent,
-                width: 1,
+                color: isSelected ? color : Colors.white24,
+                width: isSelected ? 1.5 : 1,
               ),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Color indicator
                 Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                 ),
-                const SizedBox(width: 8),
-                // Category name
-                Expanded(
-                  child: Text(
-                    entry.key,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 14,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Progress bar
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: percentage,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                      minHeight: 6,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Count only (no percentage)
+                const SizedBox(width: 6),
                 Text(
-                  "${entry.value}",
+                  entry.key,
                   style: TextStyle(
-                    color: isSelected ? Colors.yellow : Colors.yellow,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${entry.value}',
+                  style: const TextStyle(color: Colors.yellow, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-        ),
-      );
-    }).toList();
+        );
+      }).toList(),
+    );
   }
 
   @override
@@ -575,15 +550,8 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                                 ),
                               ),
                               
-                              if (_categoryCounts.isNotEmpty) ...[
+                              if (_courseCounts.isNotEmpty || _mainIngredientCounts.isNotEmpty) ...[
                                 const SizedBox(height: 8),
-                                // const Text(
-                                //   "All Categorys:",
-                                //   style: TextStyle(
-                                //     color: Colors.white,
-                                //     fontWeight: FontWeight.bold,
-                                //   ),
-                                // ),
                                 Row(
                                   children: [
                                     const Expanded(child: Divider(thickness: 1, color: Colors.white24)),
@@ -593,31 +561,53 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                                     const Expanded(child: Divider(thickness: 1, color: Colors.white24)),
                                   ],
                                 ),
-                                // const Divider(
-                                //   height: 24,                  // vertical space
-                                //   thickness: 1,
-                                //   color: Colors.white24,       // subtle on dark bg
-                                // ),
-                                // const SizedBox(height: 8),
-                                
-                                // Progress bars for each category - more compact layout and sorted by count
-                                ..._buildSortedCategoryBars(),
-                                
+
+                                // Course chips (Dinner, Breakfast, Dessert...) — tap to filter
+                                if (_courseCounts.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  const Text('Course', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  _buildCategoryChipRow(
+                                    counts: _courseCounts,
+                                    selected: _selectedCourses,
+                                    onToggle: (key) => setState(() {
+                                      if (!_selectedCourses.remove(key)) _selectedCourses.add(key);
+                                    }),
+                                  ),
+                                ],
+
+                                // Main Ingredient chips (Chicken, Seafood, Vegetarian...) — tap to filter
+                                if (_mainIngredientCounts.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  const Text('Main Ingredient', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 6),
+                                  _buildCategoryChipRow(
+                                    counts: _mainIngredientCounts,
+                                    selected: _selectedMainIngredients,
+                                    onToggle: (key) => setState(() {
+                                      if (!_selectedMainIngredients.remove(key)) _selectedMainIngredients.add(key);
+                                    }),
+                                  ),
+                                ],
+
                                 // Clear filters button when categories are selected
-                                if (_selectedCategories.isNotEmpty) ...[
+                                if (_selectedCourses.isNotEmpty || _selectedMainIngredients.isNotEmpty) ...[
                                   const SizedBox(height: 8),
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: TextButton.icon(
                                       icon: const Icon(Icons.clear, size: 16),
-                                      label: Text("Clear Category Filters (${_selectedCategories.length})"),
+                                      label: Text(
+                                        "Clear Category Filters (${_selectedCourses.length + _selectedMainIngredients.length})",
+                                      ),
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.yellow,
                                         textStyle: const TextStyle(fontSize: 12),
                                       ),
                                       onPressed: () {
                                         setState(() {
-                                          _selectedCategories.clear();
+                                          _selectedCourses.clear();
+                                          _selectedMainIngredients.clear();
                                         });
                                       },
                                     ),
@@ -716,7 +706,9 @@ class _RecipeJournalScreenState extends State<RecipeJournalScreen> {
                 return RecipeJournalWidget(
                   key: _journalKey,
                   onRecipesLoaded: _refreshStats,
-                  filteredRecipes: (_selectedDay != null || _selectedCategories.isNotEmpty) ? filteredRecipes : null,
+                  filteredRecipes: (_selectedDay != null || _selectedCourses.isNotEmpty || _selectedMainIngredients.isNotEmpty)
+                      ? filteredRecipes
+                      : null,
                 );
               },
             ),

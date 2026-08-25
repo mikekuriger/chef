@@ -113,7 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // Show confirmation
       setState(() {
-        // _errorMessage = "✅ Check your email to confirm your Dreamr✨ account.";
+        // _errorMessage = "✅ Check your email to confirm your Ai-Cookbook account.";
         _errorMessage = result;
       });
 
@@ -164,7 +164,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              "Welcome to Dreamr ✨",
+              "Welcome to AI Cookbook",
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

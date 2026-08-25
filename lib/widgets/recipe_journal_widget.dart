@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:chef/theme/colors.dart';
+import 'package:chef/screens/recipe_detail_screen.dart';
 
 
 
@@ -248,6 +249,9 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
   List<Recipe> getAllRecipes() => _recipes;
 
   final Map<int, bool> _expanded = {};
+  // Per-recipe serving-size override for the scaler; defaults to
+  // recipe.baseServings until the user picks something else.
+  final Map<int, int> _servingsOverride = {};
   bool _loading = true;
   bool get _anyExpanded => _expanded.values.any((v) => v);
 
@@ -319,6 +323,16 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
     if (t.contains('elegant')) return '••࿐••';           // ornate flower
     return '✨';                                         // default separator
   }
+
+  PageRouteBuilder<void> _recipeFadeRoute(Widget page) => PageRouteBuilder(
+        opaque: false,
+        barrierColor: AppColors.purple950,
+        transitionDuration: const Duration(milliseconds: 400),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, _, _) => page,
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+      );
 
 // Compute origin rect for share sheets (iPad/macOS need an anchor).
   Rect _shareOrigin() {
@@ -626,6 +640,84 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
     return raw.replaceAll(RegExp(r'\n[-*_]{3,}\s*$'), '');
   }
 
+  // --- Serving-size scaler --------------------------------------------
+
+  static const List<String> _fractionGlyphs = ['', '⅛', '¼', '⅜', '½', '⅝', '¾', '⅞'];
+
+  /// Format a scaled quantity for display: whole eighths render as a
+  /// unicode fraction (optionally with a leading whole number), everything
+  /// else falls back to a plain 2-decimal number.
+  String _formatQuantity(double value) {
+    if (value <= 0) return '';
+    final eighths = (value * 8).round();
+    final whole = eighths ~/ 8;
+    final remainder = eighths % 8;
+    if ((value * 8 - eighths).abs() < 0.05) {
+      final frac = _fractionGlyphs[remainder];
+      if (frac.isEmpty) return '$whole';
+      return whole > 0 ? '$whole $frac' : frac;
+    }
+    final rounded = (value * 100).round() / 100;
+    return rounded == rounded.roundToDouble() ? '${rounded.toInt()}' : rounded.toString();
+  }
+
+  int _currentServings(Recipe recipe) => _servingsOverride[recipe.id] ?? recipe.baseServings ?? 1;
+
+  Widget _buildIngredientsSection(Recipe recipe, ToneStyle toneStyle) {
+    final baseServings = recipe.baseServings!;
+    final targetServings = _currentServings(recipe);
+    final ratio = targetServings / baseServings;
+
+    Widget servingsButton(IconData icon, VoidCallback? onTap) => Material(
+          color: AppColors.purple400,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(icon, size: 18, color: Colors.black),
+            ),
+          ),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Ingredients', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: toneStyle.text)),
+              const Spacer(),
+              const Text('Servings:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+              const SizedBox(width: 6),
+              servingsButton(Icons.remove, targetServings > 1
+                  ? () => setState(() => _servingsOverride[recipe.id] = targetServings - 1)
+                  : null),
+              SizedBox(
+                width: 28,
+                child: Text('$targetServings', textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold, fontSize: 14)),
+              ),
+              servingsButton(Icons.add, () => setState(() => _servingsOverride[recipe.id] = targetServings + 1)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ...recipe.ingredientsStructured.map((ing) {
+            final qty = ing.quantityAsDouble;
+            final displayQty = qty != null ? _formatQuantity(qty * ratio) : (ing.quantity ?? '');
+            final line = [displayQty, ing.unit, ing.name].where((s) => s != null && s.isNotEmpty).join(' ');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text('•  $line', style: TextStyle(fontSize: 13, color: toneStyle.text)),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
@@ -704,11 +796,18 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                   children: [
                     // COLLAPSED ROW (image + title line)
                     GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _expanded[recipe.id] = !isExpanded;
-                        });
-                      },
+                      onTap: widget.embeddedInScrollView
+                          ? () {
+                              Navigator.push(
+                                context,
+                                _recipeFadeRoute(RecipeDetailScreen(recipe: recipe)),
+                              ).then((_) => _loadRecipes());
+                            }
+                          : () {
+                              setState(() {
+                                _expanded[recipe.id] = !isExpanded;
+                              });
+                            },
                       child: widget.embeddedInScrollView
                           // Main journal view: show tile image + text like before
                           ? Row(
@@ -912,6 +1011,12 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                                   //     ),
                                   //   ),
                                   // ),
+
+                                  // Structured ingredients + serving-size scaler
+                                  // (only for recipes that have been through
+                                  // the new edit flow at least once)
+                                  if (recipe.isStructured)
+                                    _buildIngredientsSection(recipe, toneStyle),
 
                                   // Recipe Analysis
                                   if (recipe.aiResponse.isNotEmpty) ...[

@@ -7,9 +7,9 @@
         <key>ITSAppUsesNonExemptEncryption</key>
         <false/>
         <key>NSMicrophoneUsageDescription</key>
-        <string>This app needs access to your microphone for dream dictation.</string>
+        <string>This app needs access to your microphone for dictation.</string>
         <key>GIDClientID</key>
-        <string>846080686597-8u85pj943ilkmlt583f3tct5h9ca0c3t.apps.googleusercontent.com</string>
+        <string>846080686597-ubo1cq65c39mk4u5adc6r1vga65mqha8.apps.googleusercontent.com</string>
         <key>CFBundleURLTypes</key>
         <array>
                 <dict>

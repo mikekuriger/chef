@@ -1,5 +1,6 @@
 // data/recipe_dao.dart
 import 'dart:async';
+import 'dart:convert';
 import 'package:chef/models/recipe.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +11,7 @@ class RecipeDao {
   factory RecipeDao() => _instance;
   RecipeDao._internal();
 
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
 
   Database? _db;
 
@@ -32,10 +33,14 @@ class RecipeDao {
             title TEXT,
             description TEXT,
             categories TEXT,
+            course TEXT,
+            main_ingredient TEXT,
             tags TEXT,
             time TEXT,
             servings TEXT,
+            base_servings INTEGER,
             ingredients TEXT,
+            ingredients_json TEXT,
             instructions TEXT,
             notes TEXT,
             variations TEXT,
@@ -121,6 +126,14 @@ class RecipeDao {
             await txn.execute('DROP TABLE pantry_items_old');
           });
         }
+
+        if (oldVersion < 4) {
+          // v3 -> v4: add fixed-taxonomy + structured-ingredient columns to recipes.
+          await db.execute('ALTER TABLE recipes ADD COLUMN course TEXT');
+          await db.execute('ALTER TABLE recipes ADD COLUMN main_ingredient TEXT');
+          await db.execute('ALTER TABLE recipes ADD COLUMN base_servings INTEGER');
+          await db.execute('ALTER TABLE recipes ADD COLUMN ingredients_json TEXT');
+        }
       },
     );
     return _db!;
@@ -134,10 +147,14 @@ class RecipeDao {
         'title': r.title,
         'description': r.description,
         'categories': r.categories,
+        'course': r.course,
+        'main_ingredient': r.mainIngredient,
         'tags': r.tags,
         'time': r.time,
         'servings': r.servings,
+        'base_servings': r.baseServings,
         'ingredients': r.ingredients,
+        'ingredients_json': jsonEncode(r.ingredientsStructured.map((i) => i.toJson()).toList()),
         'instructions': r.instructions,
         'notes': r.notes,
         'variations': r.variations,
@@ -146,6 +163,20 @@ class RecipeDao {
         'created_at': r.createdAt.toIso8601String(),
         'image_file': r.imageFile,
       };
+
+  List<RecipeIngredient> _parseIngredientsJsonColumn(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map(RecipeIngredient.fromJson)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   Recipe _fromMap(Map<String, Object?> m) {
     return Recipe(
@@ -156,10 +187,14 @@ class RecipeDao {
       title: (m['title'] as String?) ?? '',
       description: (m['description'] as String?) ?? '',
       categories: (m['categories'] as String?) ?? '',
+      course: m['course'] as String?,
+      mainIngredient: m['main_ingredient'] as String?,
       tags: (m['tags'] as String?) ?? '',
       time: (m['time'] as String?) ?? '',
       servings: (m['servings'] as String?) ?? '',
+      baseServings: (m['base_servings'] as num?)?.toInt(),
       ingredients: (m['ingredients'] as String?) ?? '',
+      ingredientsStructured: _parseIngredientsJsonColumn(m['ingredients_json'] as String?),
       instructions: (m['instructions'] as String?) ?? '',
       notes: (m['notes'] as String?) ?? '',
       variations: (m['variations'] as String?) ?? '',

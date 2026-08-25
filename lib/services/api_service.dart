@@ -419,6 +419,30 @@ class ApiService {
     }
   }
 
+  // ✏️ Update a recipe (title, course/main ingredient, ingredients, etc.)
+  // Pass only the fields you want to change; omitted keys are left as-is
+  // server-side. `ingredients`, if included, fully replaces the ingredient
+  // list (send RecipeIngredient.toJson() for each row).
+  static Future<Recipe> updateRecipe(int recipeId, Map<String, dynamic> fields) async {
+    final response = await DioClient.dio.patch(
+      '/api/recipes/$recipeId',
+      data: fields,
+      options: Options(validateStatus: (_) => true),
+    );
+
+    if (response.statusCode == 200) {
+      return Recipe.fromJson(response.data as Map<String, dynamic>);
+    }
+    if (response.statusCode == 400) {
+      final msg = (response.data is Map) ? response.data['error'] : null;
+      throw Exception(msg ?? 'Invalid recipe update');
+    }
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Not authenticated');
+    }
+    throw Exception('Failed to update recipe: ${response.statusMessage}');
+  }
+
   // 👁️ Toggle hidden status
   static Future<bool> toggleHiddenRecipe(int recipeId) async {
     final response = await DioClient.dio.post('/api/recipes/$recipeId/toggle-hidden');

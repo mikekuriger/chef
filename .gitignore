@@ -63,3 +63,6 @@ description.txt
 key.txt
 assets/gcloud-key.json.bak
 ios/Podfile.lock
+chef-backend/
+chef.code-workspace
+todo.txt

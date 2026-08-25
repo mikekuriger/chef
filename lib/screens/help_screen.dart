@@ -191,7 +191,7 @@ class HelpScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         InkWell(
                           onTap: () => launchUrl(Uri.parse(
-                              'https://dreamr-us-west-01.zentha.me/static/privacy.html')),
+                              'https://chef-us-west-01.zentha.me/static/privacy.html')),
                           child: const Text(
                             'Privacy Policy',
                             style: TextStyle(
