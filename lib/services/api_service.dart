@@ -445,21 +445,29 @@ class ApiService {
 
   // 👁️ Toggle hidden status
   static Future<bool> toggleHiddenRecipe(int recipeId) async {
-    final response = await DioClient.dio.post('/api/recipes/$recipeId/toggle-hidden');
+    // Backend route is /toggle-archived (chef-backend/app.py) — this used to
+    // call a /toggle-hidden path that doesn't exist there, so this action
+    // was silently 404ing.
+    final response = await DioClient.dio.post('/api/recipes/$recipeId/toggle-archived');
 
     if (response.statusCode == 200) {
       final data = response.data;
-      return data['hidden'] == true; // returns the new hidden state
+      // Backend returns {"archived": bool} — was reading a "hidden" key
+      // that never existed in the response, so this always returned false.
+      return data['archived'] == true;
     } else {
       throw Exception('Failed to toggle hidden: ${response.statusMessage}');
     }
   }
 
   // Submit a recipe to the AI
-  static Future<Map<String, dynamic>> submitRecipe(String text) async {
+  static Future<Map<String, dynamic>> submitRecipe(String text, {int? defaultServings}) async {
     final response = await DioClient.dio.post(
       '/api/chat',
-      data: {'message': text},
+      data: {
+        'message': text,
+        if (defaultServings != null) 'default_servings': defaultServings,
+      },
       options: Options(contentType: Headers.jsonContentType),
     );
     if (response.statusCode == 200) {

@@ -156,14 +156,14 @@ class ImageStore {
   }
 
   /// Back-compat: old signature used across your code.
-  /// Local-first; only hits network if missing.
+  /// Local-first; only hits network if missing. Retries once on a transient
+  /// failure (e.g. a slow cold-start connection right after app launch/login)
+  /// instead of leaving the caller's widget stuck on a placeholder until the
+  /// screen is reopened.
   static Future<File> download(int recipeId, RecipeImageKind kind, String url, {Dio? dio}) async {
     final f = await fileFor(recipeId, kind, url);
     final hit = await _existing(f);
     if (hit != null) return hit;
-
-    final tmp = File('${f.path}$_tmpSuffix');
-    await tmp.parent.create(recursive: true);
 
     final client = dio ??
         Dio(BaseOptions(
@@ -174,12 +174,28 @@ class ImageStore {
           responseType: ResponseType.bytes,
         ));
 
-    final res = await client.get<List<int>>(url,
-        options: Options(responseType: ResponseType.bytes));
-    final bytes = res.data ?? const <int>[];
-    await tmp.writeAsBytes(bytes, flush: true);
-    await tmp.rename(f.path);
-    return f;
+    Object? lastError;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      try {
+        final tmp = File('${f.path}$_tmpSuffix');
+        await tmp.parent.create(recursive: true);
+        final res = await client.get<List<int>>(url,
+            options: Options(responseType: ResponseType.bytes));
+        final bytes = res.data ?? const <int>[];
+        if (bytes.isEmpty) {
+          throw Exception('empty image response');
+        }
+        await tmp.writeAsBytes(bytes, flush: true);
+        await tmp.rename(f.path);
+        return f;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    throw lastError ?? Exception('image download failed');
   }
 
   /// Fire-and-forget prefetch (kept for compatibility).

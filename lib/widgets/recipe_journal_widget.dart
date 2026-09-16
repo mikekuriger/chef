@@ -249,9 +249,13 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
   List<Recipe> getAllRecipes() => _recipes;
 
   final Map<int, bool> _expanded = {};
-  // Per-recipe serving-size override for the scaler; defaults to
-  // recipe.baseServings until the user picks something else.
-  final Map<int, int> _servingsOverride = {};
+  // Purely local "what if I made this for N people" preview — never
+  // persisted. The only way to actually change a recipe's servings/
+  // ingredients in the database is the edit screen (pencil icon), which is
+  // a deliberate, saved action. This is a temporary view, nothing more.
+  final Map<int, int> _servingsPreview = {};
+  static const int _minPreviewServings = 1;
+  static const int _maxPreviewServings = 10;
   bool _loading = true;
   bool get _anyExpanded => _expanded.values.any((v) => v);
 
@@ -640,33 +644,29 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
     return raw.replaceAll(RegExp(r'\n[-*_]{3,}\s*$'), '');
   }
 
-  // --- Serving-size scaler --------------------------------------------
-
-  static const List<String> _fractionGlyphs = ['', '⅛', '¼', '⅜', '½', '⅝', '¾', '⅞'];
-
-  /// Format a scaled quantity for display: whole eighths render as a
-  /// unicode fraction (optionally with a leading whole number), everything
-  /// else falls back to a plain 2-decimal number.
-  String _formatQuantity(double value) {
-    if (value <= 0) return '';
-    final eighths = (value * 8).round();
-    final whole = eighths ~/ 8;
-    final remainder = eighths % 8;
-    if ((value * 8 - eighths).abs() < 0.05) {
-      final frac = _fractionGlyphs[remainder];
-      if (frac.isEmpty) return '$whole';
-      return whole > 0 ? '$whole $frac' : frac;
-    }
-    final rounded = (value * 100).round() / 100;
-    return rounded == rounded.roundToDouble() ? '${rounded.toInt()}' : rounded.toString();
+  MarkdownStyleSheet _recipeMarkdownStyle(BuildContext context, ToneStyle toneStyle) {
+    return MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+      p: TextStyle(color: toneStyle.text, fontSize: 13),
+      strong: TextStyle(color: toneStyle.text, fontWeight: FontWeight.bold),
+      em: TextStyle(color: toneStyle.text, fontStyle: FontStyle.italic),
+      h1: TextStyle(color: toneStyle.text, fontSize: 18, fontWeight: FontWeight.bold),
+      h2: TextStyle(color: toneStyle.text, fontSize: 16, fontWeight: FontWeight.bold),
+    );
   }
 
-  int _currentServings(Recipe recipe) => _servingsOverride[recipe.id] ?? recipe.baseServings ?? 1;
+  // --- Serving-size preview (local only, never saved) -------------------
+  // The database always keeps the recipe's real servings + ingredients
+  // exactly as generated or as last saved via the edit screen. This control
+  // is purely a "what if I made this for N people" view, clamped to a
+  // sensible range — nothing here is persisted.
+
+  int _previewServings(Recipe recipe) =>
+      _servingsPreview[recipe.id] ?? recipe.servingsNumber ?? 1;
 
   Widget _buildIngredientsSection(Recipe recipe, ToneStyle toneStyle) {
-    final baseServings = recipe.baseServings!;
-    final targetServings = _currentServings(recipe);
-    final ratio = targetServings / baseServings;
+    final storedServings = recipe.servingsNumber!;
+    final preview = _previewServings(recipe);
+    final ratio = preview / storedServings;
 
     Widget servingsButton(IconData icon, VoidCallback? onTap) => Material(
           color: AppColors.purple400,
@@ -686,27 +686,43 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text('Ingredients', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: toneStyle.text)),
-              const Spacer(),
-              const Text('Servings:', style: TextStyle(fontSize: 12, color: Colors.white70)),
-              const SizedBox(width: 6),
-              servingsButton(Icons.remove, targetServings > 1
-                  ? () => setState(() => _servingsOverride[recipe.id] = targetServings - 1)
-                  : null),
-              SizedBox(
-                width: 28,
-                child: Text('$targetServings', textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold, fontSize: 14)),
-              ),
-              servingsButton(Icons.add, () => setState(() => _servingsOverride[recipe.id] = targetServings + 1)),
-            ],
+          Text('Ingredients', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: toneStyle.text)),
+          const SizedBox(height: 8),
+          // Servings preview lives in its own bordered chip, clearly
+          // separated from the ingredient list below it, so it doesn't
+          // read as if it's adjusting the first ingredient's quantity.
+          // Colors follow toneStyle.text (not hardcoded white/yellow) since
+          // recipe cards are usually a light background with dark text.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: toneStyle.text.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: toneStyle.text.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Servings', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: toneStyle.text)),
+                const SizedBox(width: 10),
+                servingsButton(Icons.remove, preview > _minPreviewServings
+                    ? () => setState(() => _servingsPreview[recipe.id] = preview - 1)
+                    : null),
+                SizedBox(
+                  width: 28,
+                  child: Text('$preview', textAlign: TextAlign.center,
+                      style: TextStyle(color: toneStyle.text, fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+                servingsButton(Icons.add, preview < _maxPreviewServings
+                    ? () => setState(() => _servingsPreview[recipe.id] = preview + 1)
+                    : null),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           ...recipe.ingredientsStructured.map((ing) {
             final qty = ing.quantityAsDouble;
-            final displayQty = qty != null ? _formatQuantity(qty * ratio) : (ing.quantity ?? '');
+            final displayQty = qty != null ? RecipeIngredient.formatQuantity(qty * ratio) : (ing.quantity ?? '');
             final line = [displayQty, ing.unit, ing.name].where((s) => s != null && s.isNotEmpty).join(' ');
             return Padding(
               padding: const EdgeInsets.only(bottom: 2),
@@ -984,83 +1000,93 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                                   //   const SizedBox(height: 10),
                                   // ],
 
-                                  // Recipe Image (full-size)
-                                  if (recipe.imageFile != null &&
-                                      recipe.imageFile!.isNotEmpty)
-                                    localFirstImage(
-                                      recipeId: recipe.id,
-                                      url: recipe.imageFile,
-                                      kind: RecipeImageKind.file,
-                                      fit: BoxFit.cover,
-                                      radius: BorderRadius.circular(8),
-                                    ),
+                                  if (recipe.isStructured) ...[
+                                    // Structured recipe: build each section
+                                    // from the parsed fields directly instead
+                                    // of dumping the whole raw AI response —
+                                    // that blob repeats title/description/
+                                    // ingredients a second time, which is
+                                    // exactly the duplication this replaces.
 
-                                  // // Gradient Divider
-                                  // Container(
-                                  //   height: 1,
-                                  //   margin:
-                                  //       const EdgeInsets.symmetric(vertical: 12),
-                                  //   decoration: BoxDecoration(
-                                  //     gradient: LinearGradient(
-                                  //       colors: [
-                                  //         Colors.transparent,
-                                  //         toneStyle.text
-                                  //             .withValues(alpha: 0.7),
-                                  //         Colors.transparent,
-                                  //       ],
-                                  //     ),
-                                  //   ),
-                                  // ),
-
-                                  // Structured ingredients + serving-size scaler
-                                  // (only for recipes that have been through
-                                  // the new edit flow at least once)
-                                  if (recipe.isStructured)
-                                    _buildIngredientsSection(recipe, toneStyle),
-
-                                  // Recipe Analysis
-                                  if (recipe.aiResponse.isNotEmpty) ...[
-                                    // Text(
-                                    //   "Analysis:",
-                                    //   style: TextStyle(
-                                    //     fontSize: 14,
-                                    //     fontWeight: FontWeight.bold,
-                                    //     color: toneStyle.text,
-                                    //   ),
-                                    // ),
-                                    const SizedBox(height: 4),
-                                    MarkdownBody(
-                                      // data: recipe.analysis,
-                                      data: _sanitizeAnalysis(recipe.aiResponse),  // remove trailing divider
-                                      styleSheet:
-                                          MarkdownStyleSheet.fromTheme(
-                                                  Theme.of(context))
-                                              .copyWith(
-                                        p: TextStyle(
-                                          color: toneStyle.text,
-                                          fontSize: 13,
-                                        ),
-                                        strong: TextStyle(
-                                          color: toneStyle.text,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        em: TextStyle(
-                                          color: toneStyle.text,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        h1: TextStyle(
-                                          color: toneStyle.text,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        h2: TextStyle(
-                                          color: toneStyle.text,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    // Description
+                                    if (recipe.description.isNotEmpty) ...[
+                                      Text(
+                                        recipe.description,
+                                        style: TextStyle(color: toneStyle.text, fontSize: 13),
                                       ),
-                                    ),
+                                      const SizedBox(height: 10),
+                                    ],
+
+                                    // Ingredients + serving-size scaler
+                                    _buildIngredientsSection(recipe, toneStyle),
                                     const SizedBox(height: 6),
+
+                                    // Photo
+                                    // if (recipe.imageFile != null && recipe.imageFile!.isNotEmpty) ...[
+                                    //   localFirstImage(
+                                    //     recipeId: recipe.id,
+                                    //     url: recipe.imageFile,
+                                    //     kind: RecipeImageKind.file,
+                                    //     fit: BoxFit.cover,
+                                    //     radius: BorderRadius.circular(8),
+                                    //   ),
+                                    //   const SizedBox(height: 10),
+                                    // ],
+
+                                    // Instructions
+                                    if (recipe.instructions.isNotEmpty) ...[
+                                      Text(
+                                        "Instructions",
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: toneStyle.text),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      MarkdownBody(data: recipe.instructions, styleSheet: _recipeMarkdownStyle(context, toneStyle)),
+                                      const SizedBox(height: 10),
+                                    ],
+
+                                    // Variations
+                                    if (recipe.variations.isNotEmpty) ...[
+                                      Text(
+                                        "Variations",
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: toneStyle.text),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      MarkdownBody(data: recipe.variations, styleSheet: _recipeMarkdownStyle(context, toneStyle)),
+                                      const SizedBox(height: 6),
+                                    ],
+
+                                    // Photo
+                                    if (recipe.imageFile != null && recipe.imageFile!.isNotEmpty) ...[
+                                      localFirstImage(
+                                        recipeId: recipe.id,
+                                        url: recipe.imageFile,
+                                        kind: RecipeImageKind.file,
+                                        fit: BoxFit.cover,
+                                        radius: BorderRadius.circular(8),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
+                                  ] else ...[
+                                    // Legacy (un-edited) recipe: unchanged —
+                                    // photo, then the full raw AI response.
+                                    if (recipe.imageFile != null &&
+                                        recipe.imageFile!.isNotEmpty)
+                                      localFirstImage(
+                                        recipeId: recipe.id,
+                                        url: recipe.imageFile,
+                                        kind: RecipeImageKind.file,
+                                        fit: BoxFit.cover,
+                                        radius: BorderRadius.circular(8),
+                                      ),
+
+                                    if (recipe.aiResponse.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      MarkdownBody(
+                                        data: _sanitizeAnalysis(recipe.aiResponse),  // remove trailing divider
+                                        styleSheet: _recipeMarkdownStyle(context, toneStyle),
+                                      ),
+                                      const SizedBox(height: 6),
+                                    ],
                                   ],
 
                                   // Recipe Notes

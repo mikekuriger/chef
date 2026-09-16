@@ -17,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _enableAudio = false;
   bool _showRecipeStats = true;  // New preference
+  int _defaultServings = 2;      // Default servings for newly generated recipes
 
   bool _loading = true;
   // final NotificationService _notificationService = NotificationService();
@@ -37,12 +38,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final audioEnabled = prefs.getBool('enable_audio') ?? false;
       final showRecipeStats = prefs.getBool('show_recipe_stats') ?? true;
       final showRecipeCalendar = prefs.getBool('show_recipe_calendar') ?? true;
-      
+      final defaultServings = prefs.getInt('default_servings') ?? 2;
+
       setState(() {
         // _enableNotifications = enabled;
         // _notificationTime = time;
         _enableAudio = audioEnabled;
         _showRecipeStats = showRecipeStats;
+        _defaultServings = defaultServings;
         _loading = false;
       });
     } catch (e) {
@@ -71,6 +74,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('❌ Failed to save recipe stats visibility setting')),
       );
+    }
+  }
+
+  // Save default servings preference (used for newly generated recipes,
+  // unless the request itself specifies a different serving count)
+  Future<void> _saveDefaultServings(int value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('default_servings', value);
+    } catch (e) {
+      debugPrint('❌ Failed to save default servings setting: $e');
     }
   }
 
@@ -302,6 +316,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     activeThumbColor: Colors.white,
                     inactiveThumbColor: Colors.grey,
                     inactiveTrackColor: Colors.white30,
+                  ),
+
+                  // Default servings for newly generated recipes
+                  ListTile(
+                    title: const Text("Default Servings", style: TextStyle(color: Colors.white)),
+                    subtitle: const Text(
+                      "New recipes are generated for this many people, unless your request says otherwise",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+                          onPressed: _defaultServings > 1
+                              ? () {
+                                  setState(() => _defaultServings -= 1);
+                                  _saveDefaultServings(_defaultServings);
+                                }
+                              : null,
+                        ),
+                        SizedBox(
+                          width: 28,
+                          child: Text(
+                            '$_defaultServings',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+                          onPressed: _defaultServings < 50
+                              ? () {
+                                  setState(() => _defaultServings += 1);
+                                  _saveDefaultServings(_defaultServings);
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
               ],
             ),

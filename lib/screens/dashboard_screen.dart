@@ -315,10 +315,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   void _refreshFromTrigger() async {
-    // clear old results
+    // Clear old results — mirrors the "X" dismiss button. Without this, a
+    // generated recipe stayed visible on this tab forever after navigating
+    // away and back, since DashboardScreen's state is kept alive across tab
+    // switches (IndexedStack) and nothing else was resetting _showRecipe.
     setState(() {
       _message = null;
-      // _recipeImagePath = null;
+      _showRecipe = false;
+      _recipeImagePath = null;
+      _imageGenerating = false;
     });
 
     _loadUserName();
@@ -382,13 +387,20 @@ class _DashboardScreenState extends State<DashboardScreen>
       _loading = true;
       _message = null;
       _lastRecipeText = text;
+      // Clear any leftover image from a previous recipe so it can't briefly
+      // (or, if this new recipe's image generation fails, permanently)
+      // show attached to the wrong recipe.
+      _recipeImagePath = null;
+      _imageGenerating = false;
     });
 
     widget.onAnalyzingChange?.call(true);
 
     try {
       // Fire the request and get the response
-      final recipeData = await ApiService.submitRecipe(text);
+      final prefsForServings = await SharedPreferences.getInstance();
+      final defaultServings = prefsForServings.getInt('default_servings') ?? 2;
+      final recipeData = await ApiService.submitRecipe(text, defaultServings: defaultServings);
 
       // Set the recipe fields
       setState(() {
@@ -407,11 +419,11 @@ class _DashboardScreenState extends State<DashboardScreen>
         _showRecipe = true;
       });
 
-      // Generate image if recipe ID is available
-      if (_recipeId != null) {
-        setState(() => _imageGenerating = true);
-        _generateRecipeImage(_recipeId!);
-      }
+      // Image generation no longer runs synchronously here — it was adding
+      // real seconds (and cost) to every recipe creation for something the
+      // cookbook doesn't need immediately. Images get backfilled by a
+      // separate offline job instead; until then the recipe just shows its
+      // placeholder image, same as any other recipe without one.
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('draft_text');
@@ -435,18 +447,6 @@ class _DashboardScreenState extends State<DashboardScreen>
 
 
 
-  Future<void> _generateRecipeImage(int recipeId) async {
-    try {
-      final imagePath = await ApiService.generateRecipeImage(recipeId);
-      setState(() {
-        _recipeImagePath = imagePath;
-        _imageGenerating = false;
-      });
-    } catch (_) {
-      setState(() => _imageGenerating = false);
-    }
-  }
-  
   // Show error snackbar - only for critical errors
   void _showErrorSnackBar(String message) {
     if (mounted) {

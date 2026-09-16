@@ -38,13 +38,31 @@ class RecipeIngredient {
     );
   }
 
-  /// Best-effort parse of `quantity` to a double for scaling.
-  /// Supports plain integers/decimals, simple fractions ("1/2"), and
-  /// mixed numbers ("1 1/2"). Returns null if it can't confidently parse
+  // Unicode fraction glyphs formatQuantity() can produce — quantityAsDouble()
+  // must be able to read every one of these back, or a value that gets
+  // formatted once becomes permanently un-scalable (this was the actual bug:
+  // "2 ½" round-tripped fine as text, but silently couldn't be parsed back
+  // into a number, so it just stopped responding to scaling forever after).
+  static const Map<String, double> _glyphValues = {
+    '⅛': 1 / 8, '¼': 1 / 4, '⅓': 1 / 3, '⅜': 3 / 8, '½': 1 / 2,
+    '⅝': 5 / 8, '⅔': 2 / 3, '¾': 3 / 4, '⅞': 7 / 8,
+  };
+
+  /// Best-effort parse of `quantity` to a double for scaling. Supports plain
+  /// integers/decimals, ASCII fractions ("1/2"), mixed numbers ("1 1/2"),
+  /// and unicode fraction glyphs ("½", "2 ½") — i.e. everything
+  /// formatQuantity() can produce, so a value can be scaled repeatedly
+  /// without ever getting stuck. Returns null if it can't confidently parse
   /// (e.g. "to taste") — that line just won't scale.
   double? get quantityAsDouble {
     final q = quantity?.trim();
     if (q == null || q.isEmpty) return null;
+
+    final glyph = RegExp(r'^(?:(\d+)\s*)?([⅛¼⅓⅜½⅝⅔¾⅞])$').firstMatch(q);
+    if (glyph != null) {
+      final whole = glyph.group(1) != null ? double.parse(glyph.group(1)!) : 0.0;
+      return whole + (_glyphValues[glyph.group(2)!] ?? 0.0);
+    }
 
     final mixed = RegExp(r'^(\d+)\s+(\d+)/(\d+)$').firstMatch(q);
     if (mixed != null) {
@@ -63,6 +81,53 @@ class RecipeIngredient {
 
     return double.tryParse(q);
   }
+
+  // Candidate fractions a cook would actually recognize, closest wins —
+  // covers eighths (baking) and thirds (the other common cooking fraction).
+  static const List<MapEntry<double, String>> _fractionTable = [
+    MapEntry(1 / 8, '⅛'), MapEntry(1 / 4, '¼'), MapEntry(1 / 3, '⅓'),
+    MapEntry(3 / 8, '⅜'), MapEntry(1 / 2, '½'), MapEntry(5 / 8, '⅝'),
+    MapEntry(2 / 3, '⅔'), MapEntry(3 / 4, '¾'), MapEntry(7 / 8, '⅞'),
+  ];
+
+  /// Format a scaled quantity for display/storage: always snaps to the
+  /// nearest recognizable cooking fraction (or a whole number) — never
+  /// falls back to a raw decimal like "1.02", which nobody measures by.
+  static String formatQuantity(double value) {
+    if (value <= 0) return '';
+    var whole = value.floor();
+    final frac = value - whole;
+
+    var bestGlyph = '';
+    var bestDiff = frac; // distance to "no fraction" (round down to whole)
+    for (final entry in _fractionTable) {
+      final diff = (frac - entry.key).abs();
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestGlyph = entry.value;
+      }
+    }
+    if ((1.0 - frac) < bestDiff) {
+      // Closer to the next whole number than to any fraction.
+      whole += 1;
+      bestGlyph = '';
+    }
+
+    if (bestGlyph.isEmpty) return '$whole';
+    return whole > 0 ? '$whole $bestGlyph' : bestGlyph;
+  }
+
+  /// Rescale a whole ingredient list by [ratio]. Ingredients whose quantity
+  /// can't be confidently parsed as a number (e.g. "salt to taste") are left
+  /// untouched — everything else scales together, single source of truth.
+  static List<RecipeIngredient> rescaleAll(List<RecipeIngredient> ingredients, double ratio) {
+    if (ratio == 1.0) return ingredients;
+    return ingredients.map((ing) {
+      final qty = ing.quantityAsDouble;
+      if (qty == null) return ing;
+      return ing.copyWith(quantity: formatQuantity(qty * ratio));
+    }).toList();
+  }
 }
 
 class Recipe {
@@ -78,7 +143,6 @@ class Recipe {
   final String tags;
   final String time;
   final String servings;
-  final int? baseServings;
   final String ingredients;
   final List<RecipeIngredient> ingredientsStructured;
   final String instructions;
@@ -102,7 +166,6 @@ class Recipe {
     required this.tags,
     required this.time,
     required this.servings,
-    this.baseServings,
     required this.ingredients,
     this.ingredientsStructured = const [],
     required this.instructions,
@@ -114,9 +177,20 @@ class Recipe {
     this.imageFile,
   });
 
-  /// True once this recipe has structured ingredients + a base serving count,
-  /// i.e. it supports the serving-size scaler and row-level ingredient editing.
-  bool get isStructured => ingredientsStructured.isNotEmpty && baseServings != null && baseServings! > 0;
+  /// Best-effort numeric parse of `servings` (e.g. "4" or "4 people" -> 4).
+  /// Computed on demand rather than stored as a separate field — `servings`
+  /// (the text the AI wrote / the user last set via editing) is the only
+  /// persisted source of truth; this just extracts a number from it when
+  /// something needs one for scaling math.
+  int? get servingsNumber {
+    final m = RegExp(r'\d+').firstMatch(servings);
+    return m != null ? int.tryParse(m.group(0)!) : null;
+  }
+
+  /// True once this recipe has structured ingredients + a parseable serving
+  /// count, i.e. it supports the serving-size preview and row-level
+  /// ingredient editing.
+  bool get isStructured => ingredientsStructured.isNotEmpty && servingsNumber != null && servingsNumber! > 0;
 
   Recipe copyWith({
     int? id,
@@ -131,7 +205,6 @@ class Recipe {
     String? tags,
     String? time,
     String? servings,
-    int? baseServings,
     String? ingredients,
     List<RecipeIngredient>? ingredientsStructured,
     String? instructions,
@@ -155,7 +228,6 @@ class Recipe {
       tags: tags ?? this.tags,
       time: time ?? this.time,
       servings: servings ?? this.servings,
-      baseServings: baseServings ?? this.baseServings,
       ingredients: ingredients ?? this.ingredients,
       ingredientsStructured: ingredientsStructured ?? this.ingredientsStructured,
       instructions: instructions ?? this.instructions,
@@ -193,11 +265,6 @@ class Recipe {
         ? '${AppConfig.baseUrl}$rawImage'
         : null;
 
-    final rawBaseServings = json['base_servings'];
-    final baseServings = rawBaseServings is int
-        ? rawBaseServings
-        : int.tryParse(rawBaseServings?.toString() ?? '');
-
     return Recipe(
       id: json['id'] ?? json['recipe_id'] ?? 0,
       userId: int.tryParse(json['user_id']?.toString() ?? '') ?? 0,
@@ -213,7 +280,6 @@ class Recipe {
       tags: (json['tags'] as String?)?.trim() ?? '',
       time: (json['time'] as String?)?.trim() ?? '',
       servings: (json['servings'] as String?)?.trim() ?? '',
-      baseServings: baseServings,
       ingredients: (json['ingredients'] as String?) ?? '',
       ingredientsStructured: _parseIngredientsJson(json['ingredients_json']),
       instructions: (json['instructions'] as String?) ?? '',
@@ -240,7 +306,6 @@ class Recipe {
       'tags': tags,
       'time': time,
       'servings': servings,
-      'base_servings': baseServings,
       'ingredients': ingredients,
       'ingredients_json': jsonEncode(ingredientsStructured.map((i) => i.toJson()).toList()),
       'instructions': instructions,

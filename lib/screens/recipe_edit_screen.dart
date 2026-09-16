@@ -10,11 +10,18 @@ class _IngredientRow {
   final TextEditingController quantity;
   final TextEditingController unit;
   final TextEditingController name;
+  // The quantity this row started at, as a number — used as the anchor for
+  // the servings stepper below so repeated taps always scale from the true
+  // original instead of compounding rounding error. Null for a manually
+  // added blank row, or a quantity that can't be parsed as a number (e.g.
+  // "to taste") — those rows are simply left alone by the stepper.
+  final double? originalQuantity;
 
   _IngredientRow({String? quantity, String? unit, String? name})
       : quantity = TextEditingController(text: quantity ?? ''),
         unit = TextEditingController(text: unit ?? ''),
-        name = TextEditingController(text: name ?? '');
+        name = TextEditingController(text: name ?? ''),
+        originalQuantity = RecipeIngredient(quantity: quantity, name: '').quantityAsDouble;
 
   void dispose() {
     quantity.dispose();
@@ -75,10 +82,16 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
   late final TextEditingController _description;
   late final TextEditingController _time;
   late final TextEditingController _difficulty;
-  late final TextEditingController _baseServings;
   late final TextEditingController _instructions;
   late final TextEditingController _notes;
   late final TextEditingController _variations;
+
+  // Servings is a single number, kept in sync with ingredient quantities by
+  // construction: the stepper always rescales every row from its original
+  // amount, so there's never a moment where servings and ingredients can
+  // say different things.
+  late int _servings;
+  late final int _originalServings;
 
   String? _course;
   final Set<String> _mainIngredients = {};
@@ -96,9 +109,8 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     _description = TextEditingController(text: r.description);
     _time = TextEditingController(text: r.time);
     _difficulty = TextEditingController(text: r.difficulty);
-    _baseServings = TextEditingController(
-      text: (r.baseServings ?? int.tryParse(r.servings))?.toString() ?? r.servings,
-    );
+    _servings = r.servingsNumber ?? 2;
+    _originalServings = _servings;
     _instructions = TextEditingController(text: r.instructions);
     _notes = TextEditingController(text: r.notes);
     _variations = TextEditingController(text: r.variations);
@@ -129,7 +141,6 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     _description.dispose();
     _time.dispose();
     _difficulty.dispose();
-    _baseServings.dispose();
     _instructions.dispose();
     _notes.dispose();
     _variations.dispose();
@@ -147,6 +158,23 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     setState(() {
       _ingredientRows.removeAt(index).dispose();
       if (_ingredientRows.isEmpty) _ingredientRows.add(_IngredientRow());
+    });
+  }
+
+  // Rescales every ingredient row from its ORIGINAL quantity (not the
+  // currently-displayed one) so repeated taps don't compound rounding
+  // error. Rows without a parseable original quantity (blank/added rows,
+  // "to taste", etc.) are left untouched — nothing to scale.
+  void _changeServings(int newServings) {
+    if (newServings < 1) return;
+    setState(() {
+      _servings = newServings;
+      final ratio = newServings / _originalServings;
+      for (final row in _ingredientRows) {
+        if (row.originalQuantity != null) {
+          row.quantity.text = RecipeIngredient.formatQuantity(row.originalQuantity! * ratio);
+        }
+      }
     });
   }
 
@@ -170,8 +198,6 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
             })
         .toList();
 
-    final baseServings = int.tryParse(_baseServings.text.trim());
-
     try {
       final updated = await ApiService.updateRecipe(widget.recipe.id, {
         'title': _title.text.trim(),
@@ -179,8 +205,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
         'course': _course,
         'main_ingredient': _mainIngredients.toList(),
         'time': _time.text.trim(),
-        'servings': _baseServings.text.trim(),
-        'base_servings': baseServings,
+        'servings': '$_servings',
         'ingredients': ingredients,
         'instructions': _instructions.text.trim(),
         'notes': _notes.text.trim(),
@@ -302,28 +327,42 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
               }).toList(),
             ),
 
-            Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: TextField(
-                      controller: _baseServings,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _fieldDecoration('Servings'),
+            _sectionLabel('Servings'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
+                    onPressed: _servings > 1 ? () => _changeServings(_servings - 1) : null,
+                  ),
+                  SizedBox(
+                    width: 32,
+                    child: Text('$_servings', textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
+                    onPressed: () => _changeServings(_servings + 1),
+                  ),
+                  const Spacer(),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Text(
+                      'Adjusts ingredient amounts too',
+                      style: TextStyle(color: Colors.white54, fontSize: 11, fontStyle: FontStyle.italic),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: TextField(controller: _time, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Time')),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
+            const SizedBox(height: 10),
+            TextField(controller: _time, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Time')),
             const SizedBox(height: 10),
             TextField(controller: _difficulty, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Difficulty')),
 

@@ -2,6 +2,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:chef/constants.dart';
 import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
 // import 'package:intl/intl.dart';
@@ -174,6 +175,7 @@ class RecipeJournalEditorWidgetState extends State<RecipeJournalEditorWidget> {
                                 : d;
                           }).toList();
                         });
+                        recipeDataChanged.value = true;
                       } catch (e) {
                         if (mounted) {
                           final messenger = ScaffoldMessenger.of(context);
@@ -212,6 +214,11 @@ class RecipeJournalEditorWidgetState extends State<RecipeJournalEditorWidget> {
                           setState(() {
                             _recipes.removeWhere((d) => d.id == recipe.id);
                           });
+                          // "My Recipes" is a separate, kept-alive tab —
+                          // signal it so it refetches next time it's shown
+                          // instead of continuing to show this deleted
+                          // recipe until a manual pull-to-refresh.
+                          recipeDataChanged.value = true;
 
                           messenger.showSnackBar(
                             const SnackBar(content: Text('🗑️ Recipe deleted')),

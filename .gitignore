@@ -50,6 +50,7 @@ README.md
 b
 b.ios
 b.release
+b.debug
 devtools_options.yaml
 google_client_ID
 google_client_ID-release
@@ -66,3 +67,5 @@ ios/Podfile.lock
 chef-backend/
 chef.code-workspace
 todo.txt
+pubspec.lock
+ios/Runner.xcodeproj/project.pbxproj

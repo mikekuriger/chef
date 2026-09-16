@@ -19,6 +19,11 @@ class RecipeDetailScreen extends StatefulWidget {
 
 class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   late Recipe _recipe;
+  // Bumped on every successful save so the key below always changes on
+  // edit — not just when the title happens to change — forcing a fresh
+  // RecipeJournalWidget state (and clearing its servings-override cache)
+  // instead of reusing stale per-recipe scaler state from before the edit.
+  int _editVersion = 0;
 
   @override
   void initState() {
@@ -32,7 +37,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       MaterialPageRoute(builder: (_) => RecipeEditScreen(recipe: _recipe)),
     );
     if (updated != null && mounted) {
-      setState(() => _recipe = updated);
+      setState(() {
+        _recipe = updated;
+        _editVersion++;
+      });
     }
   }
 
@@ -62,10 +70,10 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       body: SafeArea(
         top: false,
         child: RecipeJournalWidget(
-          // Key it by the recipe's fields that change on edit, so the
-          // journal widget rebuilds its internal state after a save
-          // instead of reusing a stale list from before the edit.
-          key: ValueKey('recipe-detail-${_recipe.id}-${_recipe.title.hashCode}'),
+          // Keyed by edit version (not just title) so ANY save forces a
+          // fresh widget state — clearing stale scaler overrides too, not
+          // just refreshing the displayed text.
+          key: ValueKey('recipe-detail-${_recipe.id}-v$_editVersion'),
           filteredRecipes: [_recipe],
           autoExpandSingle: true,
           embeddedInScrollView: false,
