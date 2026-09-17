@@ -7,7 +7,6 @@ import 'package:chef/screens/login_screen.dart';
 import 'package:chef/screens/register_screen.dart';
 import 'package:chef/screens/dashboard_screen.dart';
 import 'package:chef/screens/recipe_journal_screen.dart';
-import 'package:chef/screens/recipe_journal_editor_screen.dart';
 import 'package:chef/screens/pantry_screen.dart';
 // import 'package:chef/screens/dream_gallery_screen.dart';
 import 'package:chef/screens/forgot_password_screen.dart';
@@ -74,7 +73,6 @@ class ReciperApp extends StatelessWidget {
             '/register': (context) => const RegisterScreen(),
             '/dashboard': (context) => DashboardScreen(refreshTrigger: recipeEntryRefreshTrigger),
             '/journal': (context) => RecipeJournalScreen(refreshTrigger: journalRefreshTrigger),
-            '/editor': (context) => RecipeJournalEditorScreen(refreshTrigger: journalRefreshTrigger),
             '/pantry': (context) => const PantryScreen(),
             // '/gallery': (context) => RecipeGalleryScreen(refreshTrigger: galleryRefreshTrigger),
             '/image': (context) => const Placeholder(),
