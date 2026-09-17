@@ -1,16 +1,16 @@
 // widgets/recipe_journal_widget.dart
 import 'dart:io';
+import 'package:chef/constants.dart';
 import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
 import 'package:chef/services/dio_client.dart';
 import 'package:chef/services/image_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'package:chef/utils/recipe_pdf.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/screens/recipe_detail_screen.dart';
 
@@ -243,8 +243,16 @@ class _NotesSheetState extends State<NotesSheet> {
 class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
   
   List<Recipe> _recipes = [];
+  // Ids removed via swipe-to-delete, pending or already confirmed on the
+  // server. Filtered out of every source (own list or a parent-supplied
+  // filteredRecipes) so the swiped card leaves the tree immediately instead
+  // of only doing so once a later full reload happens to catch up - a stale
+  // Dismissible still in the tree throws.
+  final Set<int> _dismissedRecipeIds = {};
   // Return filtered recipes if available, otherwise return all recipes
-  List<Recipe> getRecipes() => widget.filteredRecipes ?? _recipes;
+  List<Recipe> getRecipes() => (widget.filteredRecipes ?? _recipes)
+      .where((r) => !_dismissedRecipeIds.contains(r.id))
+      .toList();
   // Always return all recipes for stats calculation
   List<Recipe> getAllRecipes() => _recipes;
 
@@ -393,126 +401,16 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
 
   // Print recipe as PDF
   Future<void> _printRecipe(Recipe d) async {
-    final pdf = pw.Document();
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Title
-              if (d.title.isNotEmpty)
-                pw.Text(
-                  d.title,
-                  style: pw.TextStyle(
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              
-              pw.SizedBox(height: 16),
-              
-              // Description
-              if (d.description.isNotEmpty)
-                pw.Text(
-                  d.description,
-                  style: const pw.TextStyle(fontSize: 14),
-                ),
-              
-              pw.SizedBox(height: 16),
-              
-              // Details row
-              pw.Row(
-                children: [
-                  // if (d.difficulty.isNotEmpty)
-                    pw.Expanded(
-                      child: pw.Text('Difficulty: ${d.difficulty}', style: const pw.TextStyle(fontSize: 12)),
-                    ),
-                  if (d.servings.isNotEmpty)
-                    pw.Expanded(
-                      child: pw.Text('Servings: ${d.servings}', style: const pw.TextStyle(fontSize: 12)),
-                    ),
-                  if (d.time.isNotEmpty)
-                    pw.Expanded(
-                      child: pw.Text('Time: ${d.time}', style: const pw.TextStyle(fontSize: 12)),
-                    ),
-                ],
-              ),
-              
-              pw.SizedBox(height: 16),
-              
-              // Ingredients
-              if (d.ingredients.isNotEmpty) ...[
-                pw.Text(
-                  'Ingredients',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  d.ingredients,
-                  style: const pw.TextStyle(fontSize: 12),
-                ),
-                pw.SizedBox(height: 16),
-              ],
-              
-              // Instructions
-              if (d.instructions.isNotEmpty) ...[
-                pw.Text(
-                  'Instructions',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  d.instructions,
-                  style: const pw.TextStyle(fontSize: 12),
-                ),
-                pw.SizedBox(height: 16),
-              ],
-              
-              // Variations
-              if (d.variations.isNotEmpty) ...[
-                pw.Text(
-                  'Variations',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  d.variations,
-                  style: const pw.TextStyle(fontSize: 12),
-                ),
-              ],
-
-              // Notes
-              if (d.notes.isNotEmpty) ...[
-                pw.Text(
-                  'Notes',
-                  style: pw.TextStyle(
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  d.notes,
-                  style: const pw.TextStyle(fontSize: 12),
-                ),
-                pw.SizedBox(height: 16),
-              ],
-            ],
-          );
-        },
-      ),
+    final pdf = buildRecipePdf(
+      title: d.title,
+      description: d.description,
+      time: d.time,
+      servings: d.servings,
+      difficulty: d.difficulty,
+      ingredients: d.ingredients,
+      instructions: d.instructions,
+      notes: d.notes,
+      variations: d.variations,
     );
 
     await Printing.layoutPdf(
@@ -783,10 +681,8 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
             final recipe = recipesToDisplay[index];
             final isExpanded = _expanded[recipe.id] ?? false;
             final toneStyle = _getToneStyle(recipe.categories);
-            final formattedDate = DateFormat('EEE, MMM d, y h:mm a')
-                .format(recipe.createdAt.toLocal());
 
-            return Padding(
+            final card = Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),         // space between cards
               child: Container(
                 width: double.infinity,
@@ -897,13 +793,6 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    formattedDate,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: toneStyle.text,
-                                    ),
-                                  ),
-                                  Text(
                                     recipe.title,
                                     maxLines: 1,
                                     softWrap: false,
@@ -962,6 +851,31 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                                       ),
                                     ],
                                   ),
+
+                                  // Time + Difficulty - each on its own line;
+                                  // Time in particular can be a long combined
+                                  // "Prep/Cook/Total" string that wraps badly
+                                  // when squeezed into half a Row.
+                                  if (recipe.time.isNotEmpty || recipe.difficulty.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    if (recipe.time.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 4),
+                                        child: Text(
+                                          'Time: ${recipe.time}',
+                                          style: TextStyle(fontSize: 13, color: toneStyle.text),
+                                        ),
+                                      ),
+                                    if (recipe.difficulty.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 4),
+                                        child: Text(
+                                          'Difficulty: ${recipe.difficulty}',
+                                          style: TextStyle(fontSize: 13, color: toneStyle.text),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 4),
+                                  ],
 
                                   // Recipe Text Header
                                   // Row(
@@ -1226,6 +1140,59 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                   ],
                 ),
               ),
+            );
+
+            // Swipe-to-delete only makes sense in the scrollable list view,
+            // not the single-recipe detail page.
+            if (!widget.embeddedInScrollView) return card;
+
+            return Dismissible(
+              key: ValueKey('recipe-dismiss-${recipe.id}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade700,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              confirmDismiss: (_) async {
+                return await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Recipe'),
+                        content: const Text('Are you sure you want to delete this recipe?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+                        ],
+                      ),
+                    ) ??
+                    false;
+              },
+              onDismissed: (_) async {
+                final messenger = ScaffoldMessenger.of(context);
+                // Remove from view immediately (needed either way - covers
+                // both the plain `_recipes` list and a parent-supplied
+                // filteredRecipes list, which this widget can't mutate
+                // directly). Restored on failure below.
+                setState(() => _dismissedRecipeIds.add(recipe.id));
+                try {
+                  await ApiService.deleteRecipe(recipe.id);
+                  setState(() => _recipes.removeWhere((r) => r.id == recipe.id));
+                  recipeDataChanged.value = true;
+                  messenger.showSnackBar(const SnackBar(content: Text('🗑️ Recipe deleted')));
+                } catch (e) {
+                  if (mounted) {
+                    setState(() => _dismissedRecipeIds.remove(recipe.id));
+                  }
+                  messenger.showSnackBar(const SnackBar(content: Text('❌ Failed to delete recipe')));
+                }
+              },
+              child: card,
             );
           },
         ),

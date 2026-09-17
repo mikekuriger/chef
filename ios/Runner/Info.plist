@@ -43,8 +43,6 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app may access your location if you enable location-based features.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to your microphone for dictation.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

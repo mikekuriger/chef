@@ -8,7 +8,6 @@ import 'package:chef/screens/recipe_journal_screen.dart';
 import 'package:chef/screens/settings_screen.dart';
 import 'package:chef/screens/help_screen.dart';
 import 'package:chef/screens/pantry_screen.dart';
-import 'package:chef/screens/manage_recipes_screen.dart';
 import 'package:chef/utils/session_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:chef/state/pantry_model.dart';
@@ -186,17 +185,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                       ),
                       items: const [
                         PopupMenuItem(
-                          value: '/editor',
-                          child: Row(
-                            children: [
-                              Icon(Icons.visibility_off_outlined, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text('Manage Recipes', style: TextStyle(color: Colors.white)),
-                            ],
-                          ),
-                        ),
-
-                        PopupMenuItem(
                           value: '/settings',
                           child: Row(
                             children: [
@@ -234,16 +222,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                     FocusScope.of(btnContext).unfocus();
 
                     switch (route) {
-                      case '/editor':
-                        editorRefreshTrigger.value++;
-                        Navigator.push(
-                          btnContext,
-                          MaterialPageRoute(
-                            builder: (_) => ManageRecipesScreen(refreshTrigger: editorRefreshTrigger),
-                          ),
-                        );
-                        break;
-
                       case '/profile':
                         setState(() {
                           _selectedIndex = 3;
