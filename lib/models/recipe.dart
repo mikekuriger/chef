@@ -266,7 +266,8 @@ class Recipe {
         : null;
 
     return Recipe(
-      id: json['id'] ?? json['recipe_id'] ?? 0,
+      // submitRecipe hands back recipe_id as a String, so parse rather than cast.
+      id: int.tryParse((json['id'] ?? json['recipe_id'])?.toString() ?? '') ?? 0,
       userId: int.tryParse(json['user_id']?.toString() ?? '') ?? 0,
       text: (json['text'] as String?) ?? '',
       aiResponse: (json['ai_response'] as String?) ?? '',

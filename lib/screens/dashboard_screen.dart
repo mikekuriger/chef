@@ -1,10 +1,12 @@
 // screens/dashboard_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:just_audio/just_audio.dart';
 // import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chef/services/api_service.dart';
+import 'package:chef/models/recipe.dart';
+import 'package:chef/state/recipe_list_model.dart';
 // import 'package:chef/constants.dart';
 import 'package:chef/theme/colors.dart';
 import 'package:chef/services/image_store.dart';
@@ -35,13 +37,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final TextEditingController _controller = TextEditingController();
-  final AudioPlayer _player = AudioPlayer();
-
-
 
   String? _userName;
-  // bool _enableAudio = false;
-  // bool _hasPlayedIntroAudio = false;
 
   bool _loading = false;
   // bool _imageGenerating = false;
@@ -95,7 +92,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
-    _player.dispose();
     widget.refreshTrigger.removeListener(_refreshFromTrigger);
     super.dispose();
   }
@@ -136,24 +132,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Future<void> _playIntroAudioOnce() async {
-  //   if (_hasPlayedIntroAudio || !_enableAudio) return;
-  //   _hasPlayedIntroAudio = true;
-  //   try {
-  //     await _player.setAsset('assets/sound/tell_me_about.mp3');
-  //     await _player.play();
-  //   } catch (_) {}
-  // }
-
   Future<void> _loadUserName() async {
     try {
       final authData = await ApiService.checkAuth();
       if (authData['authenticated'] == true) {
         setState(() {
           _userName = authData['first_name'];
-          // _enableAudio = authData['enable_audio'] == true || authData['enable_audio'] == '1';
         });
-        // _playIntroAudioOnce();
       }
     } catch (_) {}
   }
@@ -222,13 +207,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // separate offline job instead; until then the recipe just shows its
       // placeholder image, same as any other recipe without one.
 
+      // Cache it locally right away so it's in "My Recipes" and available
+      // offline immediately, without waiting for the next background sync.
+      // recipeData is a hand-picked subset of the full recipe (no course/
+      // main_ingredient/structured ingredients/image yet - those arrive on
+      // the next sync), but Recipe.fromJson fills in sane defaults for
+      // whatever's missing.
+      // The server accepted the submission, so clear the input now - a local
+      // caching problem below must not leave stale text or a stale draft.
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('draft_text');
       // _loadQuota(); // refresh quota after submission
       _controller.clear();
 
+      // Local caching is best-effort; failure here is not a failed submission.
+      try {
+        if (mounted) {
+          await context.read<RecipeListModel>().upsertRecipe(Recipe.fromJson(recipeData));
+        }
+      } catch (e, st) {
+        debugPrint('Local recipe cache failed (submission succeeded): $e\n$st');
+      }
+
       // Do not navigate, stay on dashboard to show the recipe
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Recipe submission failed: $e\n$st');
       setState(() {
         _message = "Recipe submission failed.";
       });
@@ -521,7 +524,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Your Recipe',
+                '',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,

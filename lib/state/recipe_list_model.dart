@@ -30,13 +30,20 @@ class RecipeListModel extends ChangeNotifier {
     if (_loading) return;
     _loading = true; notifyListeners();
     try {
-      await repo.syncFromServer(includeArchived: includeArchived, prefetchImages: true);
-      // await repo.syncFromServer(includeArchived: includeArchived, prefetchImages: false);
-
+      await repo.syncFromServer(includeArchived: includeArchived);
+    } catch (e) {
+      // Offline (or the request otherwise failed) - the local snapshot
+      // loaded in init()/loadLocal() is already showing, so there's
+      // nothing else to do here.
+      debugPrint('⚠️ Recipe sync failed (offline?): $e');
     } finally {
       _loading = false; notifyListeners();
     }
   }
+
+  Future<void> deleteRecipe(int id) => repo.deleteRecipe(id, includeArchived: includeArchived);
+
+  Future<void> upsertRecipe(Recipe r) => repo.upsertRecipe(r, includeArchived: includeArchived);
 
   @override
   void dispose() {

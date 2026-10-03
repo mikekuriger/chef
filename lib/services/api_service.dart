@@ -749,7 +749,6 @@ class ApiService {
         'gender':     (data['gender'] ?? '').toString(),
         'timezone':   (data['timezone'] ?? '').toString(),
         'avatar_url': (data['avatar_url'] ?? '').toString(),
-        'enable_audio': data['enable_audio'] ?? '',
         'subscription_tier': data['subscription_tier'] ?? 'free',
       };
     } else {
@@ -764,7 +763,6 @@ class ApiService {
     String? gender,
     DateTime? birthdate,
     String? timezone,
-    bool enableAudio = false,
     MultipartFile? avatarFile, // optional avatar
   }) async {
     final formDataMap = <String, dynamic>{
@@ -774,7 +772,6 @@ class ApiService {
       if (gender != null) 'gender': gender,
       if (birthdate != null) 'birthdate': birthdate.toIso8601String().split('T')[0], // backend expects yyyy-MM-dd
       if (timezone != null) 'timezone': timezone,
-      'enable_audio': enableAudio ? '1' : '0',
       if (avatarFile != null) 'avatar': avatarFile,
     };
 

@@ -5,8 +5,10 @@ import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
 import 'package:chef/services/dio_client.dart';
 import 'package:chef/services/image_store.dart';
+import 'package:chef/state/recipe_list_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
@@ -267,13 +269,37 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
   bool _loading = true;
   bool get _anyExpanded => _expanded.values.any((v) => v);
 
+  // Recipes are local-first: RecipeListModel already keeps a SQLite-backed
+  // cache in sync with the server (see recipe_dao.dart/recipe_repository.dart),
+  // the same pattern already used for pantry. Subscribing here means this
+  // list shows instantly from disk and still works with no network, with a
+  // background refresh filling in any changes when one's available.
+  RecipeListModel? _recipeListModel;
+  void _onModelChanged() {
+    if (!mounted) return;
+    setState(() => _recipes = _recipeListModel!.recipes);
+  }
+
   @override
   void initState() {
     super.initState();
-    // Always load all recipes for stats, even when filtered
-    _loadRecipes();
     if (widget.filteredRecipes != null) {
       _loading = false;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_recipeListModel == null) {
+      _recipeListModel = context.read<RecipeListModel>();
+      _recipeListModel!.addListener(_onModelChanged);
+      // Always load all recipes for stats, even when filtered. Seeded
+      // synchronously from whatever the model already has (instant if
+      // it finished its own local-first load already) then kick a
+      // refresh in case there's anything newer on the server.
+      _recipes = _recipeListModel!.recipes;
+      _loadRecipes();
     }
   }
 
@@ -292,6 +318,12 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
         _loadRecipes();
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _recipeListModel?.removeListener(_onModelChanged);
+    super.dispose();
   }
 
   
@@ -421,21 +453,15 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
     // Share just the recipe image
 
   
-// Load recipes from API
+  // Local snapshot (already seeded in didChangeDependencies) is shown
+  // immediately; this just asks the model to sync with the server in the
+  // background. Offline/failed syncs are swallowed inside the model, so
+  // whatever's already on screen just stays as-is.
   Future<void> _loadRecipes() async {
-    try {
-      final recipes = await ApiService.fetchRecipes();
-      setState(() {
-        _recipes = recipes;
-        _loading = false;
-      });
-      widget.onRecipesLoaded?.call();
-    } catch (e) {
-      // print("❌ Failed to fetch recipes: $e");
-      setState(() {
-        _loading = false;
-      });
-    }
+    await _recipeListModel?.refresh();
+    if (!mounted) return;
+    setState(() => _loading = false);
+    widget.onRecipesLoaded?.call();
   }
 
   void refresh() {
@@ -457,12 +483,12 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
       final data  = await ApiService.getRecipeNotes(recipeId);
       final notes = (data['notes'] as String?)?.trim() ?? "";
 
-      setState(() {
-        final i = _recipes.indexWhere((d) => d.id == recipeId);
-        if (i != -1) {
-          _recipes[i] = _recipes[i].copyWith(notes: notes);
-        }
-      });
+      final i = _recipes.indexWhere((d) => d.id == recipeId);
+      if (i != -1) {
+        // Routed through the model so the local cache picks up the edit
+        // too, not just this widget's in-memory copy.
+        await _recipeListModel?.upsertRecipe(_recipes[i].copyWith(notes: notes));
+      }
     }
   }
 
@@ -1181,8 +1207,10 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
                 // directly). Restored on failure below.
                 setState(() => _dismissedRecipeIds.add(recipe.id));
                 try {
-                  await ApiService.deleteRecipe(recipe.id);
-                  setState(() => _recipes.removeWhere((r) => r.id == recipe.id));
+                  // Deletes on the server, then the local cache - _recipes
+                  // updates itself via the RecipeListModel listener once
+                  // that completes.
+                  await _recipeListModel!.deleteRecipe(recipe.id);
                   recipeDataChanged.value = true;
                   messenger.showSnackBar(const SnackBar(content: Text('🗑️ Recipe deleted')));
                 } catch (e) {

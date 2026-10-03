@@ -15,7 +15,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _enableAudio = false;
   bool _showRecipeStats = true;  // New preference
   int _defaultServings = 2;      // Default servings for newly generated recipes
 
@@ -35,7 +34,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       // This would come from API in a real app, but for now we're just using shared prefs
       final prefs = await SharedPreferences.getInstance();
-      final audioEnabled = prefs.getBool('enable_audio') ?? false;
       final showRecipeStats = prefs.getBool('show_recipe_stats') ?? true;
       final showRecipeCalendar = prefs.getBool('show_recipe_calendar') ?? true;
       final defaultServings = prefs.getInt('default_servings') ?? 2;
@@ -43,7 +41,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         // _enableNotifications = enabled;
         // _notificationTime = time;
-        _enableAudio = audioEnabled;
         _showRecipeStats = showRecipeStats;
         _defaultServings = defaultServings;
         _loading = false;
@@ -107,29 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('❌ Failed to save recipe calendar visibility setting')),
-      );
-    }
-  }
-
-  // Save a specific setting immediately
-  Future<void> _saveAudioSetting(bool value) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('enable_audio', value);
-      widget.refreshTrigger.value++;
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Audio setting saved'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-    } catch (e) {
-      debugPrint('❌ Failed to save audio setting: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ Failed to save audio setting')),
       );
     }
   }
@@ -251,26 +225,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                
-                // Audio toggle
-                SwitchListTile(
-                  title: Text(
-                    _enableAudio ? "Audio Enabled" : "Audio Disabled",
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  subtitle: const Text(
-                    "Play voice prompts when recording recipes",
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  value: _enableAudio,
-                  onChanged: (val) {
-                    setState(() => _enableAudio = val);
-                    _saveAudioSetting(val);
-                  },
-                  activeThumbColor: Colors.white,
-                  inactiveThumbColor: Colors.grey,
-                  inactiveTrackColor: Colors.white30,
-                ),
 
                 // Theme selection
                 Consumer<ThemeProvider>(

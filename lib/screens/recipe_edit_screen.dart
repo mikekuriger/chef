@@ -1,8 +1,10 @@
 // screens/recipe_edit_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:chef/constants.dart';
 import 'package:chef/models/recipe.dart';
 import 'package:chef/services/api_service.dart';
+import 'package:chef/state/recipe_list_model.dart';
 import 'package:chef/theme/colors.dart';
 
 /// One editable ingredient row: quantity + unit + name text controllers.
@@ -213,6 +215,11 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
         'difficulty': _difficulty.text.trim(),
       });
 
+      if (!mounted) return;
+      // Update the local cache immediately so the edit is reflected (and
+      // available offline) without waiting for the next background sync.
+      await context.read<RecipeListModel>().upsertRecipe(updated);
+
       recipeDataChanged.value = true;
       if (mounted) Navigator.of(context).pop(updated);
     } catch (e) {
@@ -222,9 +229,15 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     }
   }
 
-  InputDecoration _fieldDecoration(String label) => InputDecoration(
-        labelText: label,
+  // asHint: true shows the label as placeholder text that disappears once
+  // the field has content, instead of a labelText that persists (shrunk to
+  // the top) once filled - used for the narrow Qty/Unit fields where a
+  // permanent label would crowd the typed value.
+  InputDecoration _fieldDecoration([String label = '', bool asHint = false]) => InputDecoration(
+        labelText: (asHint || label.isEmpty) ? null : label,
+        hintText: asHint && label.isNotEmpty ? label : null,
         labelStyle: const TextStyle(color: Colors.white70),
+        hintStyle: const TextStyle(color: Colors.white38),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
@@ -283,7 +296,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           children: [
             if (_error != null)
               Padding(
@@ -291,13 +304,14 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                 child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
               ),
 
-            TextField(controller: _title, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Title')),
-            const SizedBox(height: 10),
+            _sectionLabel('Title'),
+            TextField(controller: _title, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration()),
+            _sectionLabel('Description'),
             TextField(
               controller: _description,
               maxLines: 2,
               style: const TextStyle(color: Colors.white),
-              decoration: _fieldDecoration('Description'),
+              decoration: _fieldDecoration(),
             ),
 
             _sectionLabel('Course'),
@@ -361,10 +375,10 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-            TextField(controller: _time, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Time')),
-            const SizedBox(height: 10),
-            TextField(controller: _difficulty, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration('Difficulty')),
+            _sectionLabel('Time'),
+            TextField(controller: _time, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration()),
+            _sectionLabel('Difficulty'),
+            TextField(controller: _difficulty, style: const TextStyle(color: Colors.white), decoration: _fieldDecoration()),
 
             _sectionLabel('Ingredients'),
             ..._ingredientRows.asMap().entries.map((entry) {
@@ -380,7 +394,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                       child: TextField(
                         controller: row.quantity,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration('Qty'),
+                        decoration: _fieldDecoration('Qty', true),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -389,7 +403,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                       child: TextField(
                         controller: row.unit,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration('Unit'),
+                        decoration: _fieldDecoration('Unit', true),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -397,7 +411,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                       child: TextField(
                         controller: row.name,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration('Ingredient'),
+                        decoration: _fieldDecoration('Ingredient', true),
                       ),
                     ),
                     IconButton(
@@ -423,7 +437,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
               maxLines: 10,
               minLines: 4,
               style: const TextStyle(color: Colors.white),
-              decoration: _fieldDecoration('Instructions'),
+              decoration: _fieldDecoration(),
             ),
 
             _sectionLabel('Variations'),
@@ -432,7 +446,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
               maxLines: 4,
               minLines: 2,
               style: const TextStyle(color: Colors.white),
-              decoration: _fieldDecoration('Variations'),
+              decoration: _fieldDecoration(),
             ),
 
             _sectionLabel('Notes'),
@@ -441,7 +455,7 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
               maxLines: 4,
               minLines: 2,
               style: const TextStyle(color: Colors.white),
-              decoration: _fieldDecoration('Notes'),
+              decoration: _fieldDecoration(),
             ),
 
             const SizedBox(height: 24),

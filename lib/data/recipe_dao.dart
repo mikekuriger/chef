@@ -236,4 +236,9 @@ class RecipeDao {
     );
     return rows.map(_fromMap).toList();
   }
+
+  Future<void> deleteById(int id) async {
+    final db = await _open();
+    await db.delete('recipes', where: 'id = ?', whereArgs: [id]);
+  }
 }
