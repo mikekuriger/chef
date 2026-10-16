@@ -8,7 +8,11 @@ import 'package:chef/state/recipe_list_model.dart';
 import 'package:chef/theme/colors.dart';
 
 /// One editable ingredient row: quantity + unit + name text controllers.
+/// A row with [isHeader] set is a section heading ("Wet Batter") instead of
+/// an ingredient: only its `name` controller is used, and every ingredient
+/// row below it (until the next header) belongs to that section.
 class _IngredientRow {
+  final bool isHeader;
   final TextEditingController quantity;
   final TextEditingController unit;
   final TextEditingController name;
@@ -19,8 +23,16 @@ class _IngredientRow {
   // "to taste") — those rows are simply left alone by the stepper.
   final double? originalQuantity;
 
+  _IngredientRow.header([String? title])
+      : isHeader = true,
+        quantity = TextEditingController(),
+        unit = TextEditingController(),
+        name = TextEditingController(text: title ?? ''),
+        originalQuantity = null;
+
   _IngredientRow({String? quantity, String? unit, String? name})
-      : quantity = TextEditingController(text: quantity ?? ''),
+      : isHeader = false,
+        quantity = TextEditingController(text: quantity ?? ''),
         unit = TextEditingController(text: unit ?? ''),
         name = TextEditingController(text: name ?? ''),
         originalQuantity = RecipeIngredient(quantity: quantity, name: '').quantityAsDouble;
@@ -48,6 +60,21 @@ const Set<String> _kKnownUnits = {
 /// pre-filled fields instead of dumping the whole line into "name".
 /// Mirrors chef-backend's parse_ingredient_line; doesn't need to match it
 /// exactly since the user can just edit the fields either way.
+/// Returns the section title if a legacy free-text ingredient line is a
+/// sub-heading ("**Wet Batter:**", "### Sauce", "For the sauce:") rather
+/// than an ingredient. Bulleted/numbered lines are never headings.
+String? _legacyHeading(String line) {
+  final text = line.trim();
+  if (text.isEmpty) return null;
+  final bold = RegExp(r'^\*\*\s*([^*]+?)\s*:?\s*\*\*\s*:?$').firstMatch(text);
+  if (bold != null) return bold.group(1);
+  final hash = RegExp(r'^#{1,6}\s*(.+?)\s*:?$').firstMatch(text);
+  if (hash != null) return hash.group(1);
+  final colon = RegExp(r'^([A-Za-z][^:]{0,58}):$').firstMatch(text);
+  if (colon != null) return colon.group(1);
+  return null;
+}
+
 _IngredientRow _rowFromLegacyLine(String line) {
   var text = line.trim();
   text = text.replaceFirst(RegExp(r'^[-*•]\s*'), '');
@@ -125,13 +152,19 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
     }
 
     if (r.isStructured) {
+      String? currentSection;
       for (final ing in r.ingredientsStructured) {
+        if (ing.section != currentSection) {
+          currentSection = ing.section;
+          if (currentSection != null) _ingredientRows.add(_IngredientRow.header(currentSection));
+        }
         _ingredientRows.add(_IngredientRow(quantity: ing.quantity, unit: ing.unit, name: ing.name));
       }
     } else if (r.ingredients.trim().isNotEmpty) {
       for (final line in r.ingredients.split('\n')) {
         if (line.trim().isEmpty) continue;
-        _ingredientRows.add(_rowFromLegacyLine(line));
+        final heading = _legacyHeading(line);
+        _ingredientRows.add(heading != null ? _IngredientRow.header(heading) : _rowFromLegacyLine(line));
       }
     }
     if (_ingredientRows.isEmpty) _ingredientRows.add(_IngredientRow());
@@ -154,6 +187,19 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
 
   void _addIngredientRow() {
     setState(() => _ingredientRows.add(_IngredientRow()));
+  }
+
+  void _addSectionRow([int? atIndex]) {
+    setState(() {
+      final header = _IngredientRow.header();
+      if (atIndex == null) {
+        _ingredientRows.add(header);
+        // Blank ingredient under the new heading so there's a field to type in.
+        _ingredientRows.add(_IngredientRow());
+      } else {
+        _ingredientRows.insert(atIndex, header);
+      }
+    });
   }
 
   void _removeIngredientRow(int index) {
@@ -191,14 +237,23 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
       _error = null;
     });
 
-    final ingredients = _ingredientRows
-        .where((row) => row.name.text.trim().isNotEmpty)
-        .map((row) => {
-              'quantity': row.quantity.text.trim(),
-              'unit': row.unit.text.trim(),
-              'name': row.name.text.trim(),
-            })
-        .toList();
+    // Walk top to bottom: a header row sets the current section, and every
+    // ingredient row after it is tagged with that section.
+    final ingredients = <Map<String, dynamic>>[];
+    String? section;
+    for (final row in _ingredientRows) {
+      final text = row.name.text.trim();
+      if (row.isHeader) {
+        section = text.isEmpty ? null : text;
+      } else if (text.isNotEmpty) {
+        ingredients.add({
+          'quantity': row.quantity.text.trim(),
+          'unit': row.unit.text.trim(),
+          'name': text,
+          'section': section,
+        });
+      }
+    }
 
     try {
       final updated = await ApiService.updateRecipe(widget.recipe.id, {
@@ -384,6 +439,29 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
             ..._ingredientRows.asMap().entries.map((entry) {
               final i = entry.key;
               final row = entry.value;
+              if (row.isHeader) {
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.label_outline, color: Colors.yellow, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: row.name,
+                          style: const TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold),
+                          decoration: _fieldDecoration('Section name (e.g. Sauce)', true),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                        tooltip: 'Remove section heading',
+                        onPressed: () => _removeIngredientRow(i),
+                      ),
+                    ],
+                  ),
+                );
+              }
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -414,21 +492,34 @@ class _RecipeEditScreenState extends State<RecipeEditScreen> {
                         decoration: _fieldDecoration('Ingredient', true),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                      onPressed: () => _removeIngredientRow(i),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, color: Colors.white70),
+                      onSelected: (v) {
+                        if (v == 'section') _addSectionRow(i);
+                        if (v == 'remove') _removeIngredientRow(i);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'section', child: Text('Start a new section here')),
+                        PopupMenuItem(value: 'remove', child: Text('Remove ingredient')),
+                      ],
                     ),
                   ],
                 ),
               );
             }),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: _addIngredientRow,
-                icon: const Icon(Icons.add, color: Colors.yellow),
-                label: const Text('Add ingredient', style: TextStyle(color: Colors.yellow)),
-              ),
+            Wrap(
+              children: [
+                TextButton.icon(
+                  onPressed: _addIngredientRow,
+                  icon: const Icon(Icons.add, color: Colors.yellow),
+                  label: const Text('Add ingredient', style: TextStyle(color: Colors.yellow)),
+                ),
+                TextButton.icon(
+                  onPressed: () => _addSectionRow(),
+                  icon: const Icon(Icons.label_outline, color: Colors.yellow),
+                  label: const Text('Add section', style: TextStyle(color: Colors.yellow)),
+                ),
+              ],
             ),
 
             _sectionLabel('Instructions'),

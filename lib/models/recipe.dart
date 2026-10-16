@@ -2,15 +2,19 @@
 import 'dart:convert';
 import 'package:chef/constants.dart';
 
-/// One structured ingredient line: {quantity, unit, name}.
+/// One structured ingredient line: {quantity, unit, name, section}.
 /// `quantity` is kept as the original text (e.g. "1/2", "1 1/2", "2") so it
 /// can be displayed as typed; scaling parses it to a double on demand.
+/// `section` is the optional sub-heading this line belongs to ("Wet Batter",
+/// "Sauce"...) for recipes with multiple parts; consecutive ingredients that
+/// share a section are shown together under one heading.
 class RecipeIngredient {
   final String? quantity;
   final String? unit;
   final String name;
+  final String? section;
 
-  const RecipeIngredient({this.quantity, this.unit, required this.name});
+  const RecipeIngredient({this.quantity, this.unit, required this.name, this.section});
 
   factory RecipeIngredient.fromJson(Map<String, dynamic> json) {
     return RecipeIngredient(
@@ -21,6 +25,9 @@ class RecipeIngredient {
           ? null
           : json['unit'] as String?,
       name: (json['name'] as String?) ?? '',
+      section: (json['section'] as String?)?.trim().isEmpty ?? true
+          ? null
+          : (json['section'] as String).trim(),
     );
   }
 
@@ -28,13 +35,15 @@ class RecipeIngredient {
         'quantity': quantity,
         'unit': unit,
         'name': name,
+        'section': section,
       };
 
-  RecipeIngredient copyWith({String? quantity, String? unit, String? name}) {
+  RecipeIngredient copyWith({String? quantity, String? unit, String? name, String? section}) {
     return RecipeIngredient(
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
       name: name ?? this.name,
+      section: section ?? this.section,
     );
   }
 

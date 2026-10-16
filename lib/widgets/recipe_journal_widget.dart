@@ -644,15 +644,34 @@ class RecipeJournalWidgetState extends State<RecipeJournalWidget> {
             ),
           ),
           const SizedBox(height: 10),
-          ...recipe.ingredientsStructured.map((ing) {
-            final qty = ing.quantityAsDouble;
-            final displayQty = qty != null ? RecipeIngredient.formatQuantity(qty * ratio) : (ing.quantity ?? '');
-            final line = [displayQty, ing.unit, ing.name].where((s) => s != null && s.isNotEmpty).join(' ');
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text('•  $line', style: TextStyle(fontSize: 13, color: toneStyle.text)),
-            );
-          }),
+          ...(() {
+            // Multi-part recipes: show a sub-heading whenever the section
+            // changes from the previous ingredient.
+            final widgets = <Widget>[];
+            String? currentSection;
+            for (final ing in recipe.ingredientsStructured) {
+              if (ing.section != currentSection) {
+                currentSection = ing.section;
+                if (currentSection != null) {
+                  widgets.add(Padding(
+                    padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 8, bottom: 3),
+                    child: Text(
+                      currentSection,
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: toneStyle.text),
+                    ),
+                  ));
+                }
+              }
+              final qty = ing.quantityAsDouble;
+              final displayQty = qty != null ? RecipeIngredient.formatQuantity(qty * ratio) : (ing.quantity ?? '');
+              final line = [displayQty, ing.unit, ing.name].where((s) => s != null && s.isNotEmpty).join(' ');
+              widgets.add(Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Text('•  $line', style: TextStyle(fontSize: 13, color: toneStyle.text)),
+              ));
+            }
+            return widgets;
+          })(),
         ],
       ),
     );
